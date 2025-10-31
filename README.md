@@ -8,9 +8,9 @@ You can register this repository as a Claude Code Plugin marketplace by running 
 /plugin marketplace add catalystneuro/claude-skills
 ```
 
-to register this repository in your Claude Code.
-
 To install the "analyzing-dandi-datasets" skill, run:
 ```bash
 /plugin install analyzing-dandi-datasets@catalystneuro-skills
 ```
+
+After installing the plugin, you can use the skill by just mentioning it. For instance, if you install the analyzing-dandi-datasets skill plugin from the marketplace, you can ask Claude Code to do something like: "Use the analyzing-dandi-datasets skill to find a dataset of electrophysiology data in the hippocampus and demonstrate place cells"
