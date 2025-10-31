@@ -8,6 +8,9 @@ You can register this repository as a Claude Code Plugin marketplace by running 
 /plugin marketplace add catalystneuro/claude-skills
 ```
 
+# Analyzing DANDI Datasets
+The analyzing-dandi-datasets skill helps you use the neurosift-tools MCP to fild datsets, stream them efficiently directly into memory, and analyze them to explore a specific scientific question. 
+
 To install the "analyzing-dandi-datasets" skill, run:
 ```bash
 /plugin install analyzing-dandi-datasets@catalystneuro-skills
