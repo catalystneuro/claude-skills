@@ -3,8 +3,7 @@ Public repository of skills for neurophysiology research
 
 
 # Installation
-You can use these skills in your codebase by installing them as a plugin in claude code. First start Claude Code, then run:
-
+You can register this repository as a Claude Code Plugin marketplace by running the following command in Claude Code:
 ```bash
 /plugin marketplace add catalystneuro/claude-skills
 ```
