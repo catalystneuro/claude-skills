@@ -1,0 +1,22 @@
+{
+  "name": "catalystneuro-skills",
+  "owner": {
+    "name": "Benjamin Dichter",
+    "email": "ben.dichter@catalystneuro.com"
+  },
+  "metadata": {
+    "description": "CatalystNeuro skills for standardization and analysis of open neurophysiology data.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "analyzing-dandi-datasets",
+      "description": "Skill for standardizing and analyzing DANDI datasets using CatalystNeuro tools",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./analyzing-dandi-datasets"
+      ]
+    }
+  ]
+}
