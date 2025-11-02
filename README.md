@@ -16,6 +16,6 @@ To install the "analyzing-dandi-datasets" skill, run:
 /plugin install analyzing-dandi-datasets@catalystneuro-skills
 ```
 
-This skill requires neurosift-tools. To install that, run the [Installation Steps]([url](https://github.com/flatironinstitute/neurosift/blob/main-v2/docs/mcp-neurosift-tools.md#installation-steps)) and follow the instructions for Claude Code.
+This skill requires neurosift-tools. To install that, run the [Installation Steps](https://github.com/flatironinstitute/neurosift/blob/main-v2/docs/mcp-neurosift-tools.md#installation-steps) and follow the instructions for Claude Code.
 
 After installing the plugin, you can use the skill by just mentioning it. For instance, if you install the analyzing-dandi-datasets skill plugin from the marketplace, you can ask Claude Code to do something like: "Use the analyzing-dandi-datasets skill to find a dataset of electrophysiology data in the hippocampus and demonstrate place cells"
