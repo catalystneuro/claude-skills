@@ -186,6 +186,17 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 | Compass direction | `CompassDirection` > `SpatialSeries` | `processing["behavior"]` |
 | Optogenetic stimulus | `OptogeneticSeries` | `nwbfile.add_stimulus()` |
 
+**For detailed PyNWB construction patterns by domain, see:**
+- `knowledge/pynwb-icephys.md` — intracellular electrophysiology
+- `knowledge/pynwb-optogenetics.md` — optogenetic stimulation
+- `knowledge/pynwb-ophys-advanced.md` — advanced optical physiology (ROIs, segmentation, motion correction)
+- `knowledge/pynwb-behavior.md` — behavior container types (PupilTracking, EyeTracking, etc.)
+- `knowledge/pynwb-images.md` — image data and external video files
+- `knowledge/pynwb-advanced-io.md` — compression, chunking, iterative write for large data
+- `knowledge/ndx-fiber-photometry.md` — ndx-fiber-photometry extension (REQUIRED for fiber photometry)
+- `knowledge/ndx-pose.md` — ndx-pose extension for pose estimation (DeepLabCut, SLEAP, Lightning Pose)
+- `knowledge/ndx-anatomical-localization.md` — ndx-anatomical-localization for electrode/imaging plane atlas registration
+
 **Single-photon vs. two-photon imaging:**
 Miniscope data (UCLA Miniscope, Inscopix nVista/nVoke) is **single-photon** (one-photon)
 imaging and MUST use `OnePhotonSeries`, not `TwoPhotonSeries`. Two-photon imaging
