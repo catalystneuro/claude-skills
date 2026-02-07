@@ -186,6 +186,16 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 | Compass direction | `CompassDirection` > `SpatialSeries` | `processing["behavior"]` |
 | Optogenetic stimulus | `OptogeneticSeries` | `nwbfile.add_stimulus()` |
 
+**Single-photon vs. two-photon imaging:**
+Miniscope data (UCLA Miniscope, Inscopix nVista/nVoke) is **single-photon** (one-photon)
+imaging and MUST use `OnePhotonSeries`, not `TwoPhotonSeries`. Two-photon imaging
+(ScanImage, Scanbox, Bruker, Prairie) uses `TwoPhotonSeries`. Getting this wrong is a
+common mistake. Check:
+- Miniscope → `OnePhotonSeries` (via `MiniscopeImagingInterface`)
+- Inscopix → `OnePhotonSeries` (via `InscopixImagingInterface`)
+- ScanImage, Scanbox, Bruker → `TwoPhotonSeries`
+- If unsure, ask the user whether their microscope uses one-photon or two-photon excitation.
+
 **Key constraints on SpatialSeries:**
 - Only for position data (x, y, z). Velocity and acceleration should use `TimeSeries`.
 - Must have 1, 2, or 3 data columns (not more).
