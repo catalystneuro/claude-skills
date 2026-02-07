@@ -118,6 +118,7 @@ client.dandi_authenticate()
 dandiset = client.get_dandiset("000123", "draft")
 
 # Upload each organized NWB file
+# NOTE: iter_upload_raw_asset() is on the RemoteDandiset object, NOT on DandiAPIClient
 nwb_dir = Path("./000123")
 for nwb_path in sorted(nwb_dir.rglob("*.nwb")):
     asset_path = str(nwb_path.relative_to(nwb_dir))
@@ -126,6 +127,10 @@ for nwb_path in sorted(nwb_dir.rglob("*.nwb")):
         if isinstance(status, dict) and status.get("status") == "done":
             print(f"  Done: {status['asset'].path}")
 ```
+
+**DANDI sandbox URL**: Always use `https://api.sandbox.dandiarchive.org/api` for the
+sandbox. The older `api-staging.dandiarchive.org` URL redirects and strips auth headers,
+causing 401 errors on write operations.
 
 ### Step 6: Verify on DANDI
 
@@ -185,6 +190,14 @@ for grant in work.get("grants", []):
     award_id = grant.get("funder_award_id")     # e.g., "R21MH117788"
 ```
 
+**OpenAlex data quality warnings:**
+- Some authors have **null ORCIDs** — only add `identifier` to the DANDI contributor
+  when an ORCID actually exists. Do not set it to `null` or empty string.
+- The `grants` array is **often empty** even for well-funded papers — always cross-reference
+  the paper's acknowledgments section and ask the user.
+- OpenAlex may list **extra institutional affiliations** (historical or secondary) that
+  don't match the paper. Include all but flag them for the user to review.
+
 Present the extracted data to the user for confirmation:
 
 > I found the following from OpenAlex for your paper "{title}":
@@ -213,9 +226,14 @@ def validate_orcid(orcid: str) -> bool:
     return resp.status_code == 200
 
 def validate_ror(ror_url: str) -> bool:
-    """Validate ROR ID exists. ror_url like 'https://ror.org/01cwqze88'."""
+    """Validate ROR ID exists. ror_url like 'https://ror.org/01cwqze88'.
+
+    NOTE: ROR API v2 changed the response schema — org name is in
+    org["names"][0]["value"], not org["name"]. Some OpenAlex ROR IDs
+    may be stale (return 404) due to organization mergers.
+    """
     ror_id = ror_url.replace("https://ror.org/", "")
-    resp = requests.get(f"https://api.ror.org/organizations/{ror_id}")
+    resp = requests.get(f"https://api.ror.org/v2/organizations/{ror_id}")
     return resp.status_code == 200
 ```
 
@@ -255,6 +273,49 @@ def lookup_ontology_term(term: str, ontology: str = "uberon") -> list[dict]:
 terms = lookup_ontology_term("hippocampus", "uberon")
 # → [{"label": "hippocampal formation", "iri": "http://purl.obolibrary.org/obo/UBERON_0002421",
 #      "obo_id": "UBERON:0002421"}, ...]
+```
+
+**OLS4 search pitfalls — always use exact label matching:**
+
+OLS4 often returns sub-regions or synonyms instead of the term you want:
+- Searching "primary motor cortex" may return "primary motor cortex layer 6" as the top result
+- Searching "secondary motor cortex" may return "premotor cortex" (a synonym with the same UBERON ID)
+- Searching "dorsomedial striatum" returns unrelated terms — search for "dorsal striatum" instead
+
+**Always iterate through results and match by exact label** (case-insensitive) before
+falling back to the first result:
+
+```python
+def lookup_ontology_term_exact(term, ontology="uberon"):
+    """Search OLS4 with exact label matching."""
+    results = lookup_ontology_term(term, ontology)
+    # Prefer exact label match
+    for r in results:
+        if r["label"].lower() == term.lower():
+            return r
+    # Fall back to first result if no exact match
+    return results[0] if results else None
+```
+
+**Maintain a fallback table** for commonly used terms where OLS4 search is unreliable:
+
+```python
+UBERON_FALLBACKS = {
+    "primary visual cortex": {"label": "primary visual cortex", "obo_id": "UBERON:0002436",
+        "iri": "http://purl.obolibrary.org/obo/UBERON_0002436"},
+    "secondary visual cortex": {"label": "secondary visual cortex", "obo_id": "UBERON:0022232",
+        "iri": "http://purl.obolibrary.org/obo/UBERON_0022232"},
+    "primary motor cortex": {"label": "primary motor cortex", "obo_id": "UBERON:0001384",
+        "iri": "http://purl.obolibrary.org/obo/UBERON_0001384"},
+    "secondary motor cortex": {"label": "secondary motor cortex", "obo_id": "UBERON:0016634",
+        "iri": "http://purl.obolibrary.org/obo/UBERON_0016634"},
+    "primary somatosensory cortex": {"label": "primary somatosensory cortex", "obo_id": "UBERON:0008933",
+        "iri": "http://purl.obolibrary.org/obo/UBERON_0008933"},
+    "dorsal striatum": {"label": "dorsal striatum", "obo_id": "UBERON:0005382",
+        "iri": "http://purl.obolibrary.org/obo/UBERON_0005382"},
+    "nucleus accumbens": {"label": "nucleus accumbens", "obo_id": "UBERON:0001882",
+        "iri": "http://purl.obolibrary.org/obo/UBERON_0001882"},
+}
 ```
 
 Present results to the user and add confirmed terms to `about`:
@@ -318,6 +379,12 @@ client = DandiAPIClient.from_environ()  # uses DANDI_API_KEY env var
 dandiset = client.get_dandiset("000123", "draft")
 metadata = dandiset.get_raw_metadata()
 ```
+
+**Schema validation approach**: Always start from `dandiset.get_raw_metadata()` which
+includes server-generated fields (`id`, `citation`, `assetsSummary`, `manifestLocation`).
+Mutate only the fields you control (name, description, contributors, etc.), then validate
+the **complete** metadata dict. Do NOT strip server-generated fields before validation —
+they are required by the schema.
 
 **Set title and description:**
 ```python
