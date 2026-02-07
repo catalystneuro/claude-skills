@@ -287,11 +287,20 @@ Always use this `validate_and_save` wrapper that validates against the DANDI JSO
 import requests, jsonschema
 from dandi.dandiapi import DandiAPIClient
 
+_schema_cache = {}
+
 def validate_and_save(dandiset, metadata):
-    """Validate metadata against DANDI schema, then save. Raises on invalid metadata."""
-    schema_version = metadata["schemaVersion"]
-    schema_url = f"https://raw.githubusercontent.com/dandi/schema/refs/heads/master/releases/{schema_version}/dandiset.json"
-    schema = requests.get(schema_url).json()
+    """Validate metadata against the canonical DANDI JSON schema, then save.
+
+    Raises ValueError if metadata is invalid. Uses the official schema from
+    https://github.com/dandi/schema (not dandischema.models.model_json_schema(),
+    which has Pydantic v2 generation bugs with anyOf/type conflicts).
+    """
+    version = metadata.get("schemaVersion", "0.7.0")
+    if version not in _schema_cache:
+        url = f"https://raw.githubusercontent.com/dandi/schema/refs/heads/master/releases/{version}/dandiset.json"
+        _schema_cache[version] = requests.get(url).json()
+    schema = _schema_cache[version]
 
     validator = jsonschema.Draft202012Validator(schema)
     errors = sorted(validator.iter_errors(metadata), key=lambda e: list(e.absolute_path))
@@ -303,8 +312,7 @@ def validate_and_save(dandiset, metadata):
         raise ValueError("Fix validation errors before saving")
 
     dandiset.set_raw_metadata(metadata)
-    ds_id = metadata.get("identifier", "").replace("DANDI:", "")
-    print(f"Metadata validated and saved!")
+    print("Metadata validated and saved!")
 
 client = DandiAPIClient.from_environ()  # uses DANDI_API_KEY env var
 dandiset = client.get_dandiset("000123", "draft")
@@ -503,6 +511,155 @@ After auto-populating from OpenAlex, ask the user for anything that can't be ext
 >
 > Note: You can continue uploading files and publish new versions later. Each version
 > gets its own DOI.
+
+### Step 8: Set Asset-Level Metadata (Brain Region per Subject)
+
+After uploading and setting dandiset-level metadata, set per-asset metadata — particularly
+brain region when it varies across subjects or sessions. DANDI assets support an `about`
+field (same schema as dandiset-level) that can hold `Anatomy` terms per file.
+
+#### 8a. Build a Subject → Brain Region Mapping
+
+Ask the user which brain regions each subject was recorded from. Often this is already
+known from Phase 3 metadata collection or from the NWB files themselves:
+
+> Different subjects may have implants in different brain regions. Can you tell me
+> which brain region(s) each subject was recorded from? For example:
+> - Subject A001: CA1
+> - Subject A002: V1, LM
+> - Subject A003: mPFC
+
+Or extract it programmatically from the NWB files if `electrodes.location` or
+`ImagingPlane.location` is set:
+
+```python
+from pynwb import NWBHDF5IO
+from pathlib import Path
+
+subject_regions = {}
+for nwb_path in sorted(Path("./000123").rglob("*.nwb")):
+    with NWBHDF5IO(str(nwb_path), "r") as io:
+        nwbfile = io.read()
+        subject_id = nwbfile.subject.subject_id if nwbfile.subject else None
+        regions = set()
+
+        # From electrodes table
+        if nwbfile.electrodes and "location" in nwbfile.electrodes.colnames:
+            for loc in nwbfile.electrodes["location"].data[:]:
+                if loc and loc != "unknown":
+                    regions.add(loc)
+
+        # From imaging planes
+        if "ophys" in nwbfile.processing:
+            for container in nwbfile.processing["ophys"].data_interfaces.values():
+                if hasattr(container, "imaging_plane"):
+                    loc = container.imaging_plane.location
+                    if loc and loc != "unknown":
+                        regions.add(loc)
+
+        if subject_id and regions:
+            subject_regions[subject_id] = list(regions)
+
+print(subject_regions)
+# e.g., {"C005": ["nucleus accumbens"], "C015": ["nucleus accumbens", "ventral tegmental area"]}
+```
+
+#### 8b. Look Up UBERON Terms
+
+Use the same `lookup_ontology_term` function from Step 7c to resolve brain region names
+to UBERON identifiers. **Use full OBO URIs** (not compact CURIEs like `UBERON:0002421`)
+because the DANDI asset schema requires `"format": "uri"` on identifiers.
+
+Present results to the user for confirmation:
+
+```python
+region_to_uberon = {}
+for regions in subject_regions.values():
+    for region in regions:
+        if region not in region_to_uberon:
+            terms = lookup_ontology_term(region, "uberon")
+            if terms:
+                best = terms[0]
+                region_to_uberon[region] = {
+                    "schemaKey": "Anatomy",
+                    "name": best["label"],
+                    "identifier": best["iri"],  # Full OBO URI, e.g., "http://purl.obolibrary.org/obo/UBERON_0012171"
+                }
+```
+
+#### 8c. Apply Brain Region to Each Asset
+
+Use the DANDI REST API directly to update each asset's `about` field. The workflow
+is: list assets → GET metadata → update `about` → PUT back with `blob_id`.
+
+**Note**: Each PUT creates a new asset version with a new `asset_id`.
+
+```python
+import requests
+
+DANDI_API = "https://api.dandiarchive.org/api"  # or sandbox
+HEADERS = {"Authorization": f"token {api_key}", "Content-Type": "application/json"}
+DANDISET_ID = "000123"
+
+# List all assets
+resp = requests.get(f"{DANDI_API}/dandisets/{DANDISET_ID}/versions/draft/assets/", headers=HEADERS)
+assets = resp.json()["results"]
+
+for asset_info in assets:
+    asset_id = asset_info["asset_id"]
+    blob_id = asset_info["blob"]
+    path = asset_info["path"]
+
+    # Extract subject_id from path (e.g., "sub-C005/sub-C005_ses-xxx.nwb")
+    subject_id = path.split("/")[0].replace("sub-", "") if path.startswith("sub-") else None
+    if not subject_id or subject_id not in subject_regions:
+        continue
+
+    # Build anatomy entries for this subject
+    about = [region_to_uberon[r] for r in subject_regions[subject_id] if r in region_to_uberon]
+    if not about:
+        continue
+
+    # GET current asset metadata
+    meta_resp = requests.get(f"{DANDI_API}/assets/{asset_id}/", headers=HEADERS)
+    metadata = meta_resp.json()
+    metadata["about"] = about
+
+    # PUT updated metadata
+    put_resp = requests.put(
+        f"{DANDI_API}/dandisets/{DANDISET_ID}/versions/draft/assets/{asset_id}/",
+        headers=HEADERS,
+        json={"metadata": metadata, "blob_id": blob_id},
+    )
+    if put_resp.status_code == 200:
+        print(f"  {path}: {[a['name'] for a in about]}")
+    else:
+        print(f"  {path}: FAILED {put_resp.status_code} - {put_resp.text[:200]}")
+```
+
+If the dandiset has many assets, paginate through them:
+```python
+url = f"{DANDI_API}/dandisets/{DANDISET_ID}/versions/draft/assets/"
+while url:
+    resp = requests.get(url, headers=HEADERS)
+    data = resp.json()
+    for asset_info in data["results"]:
+        # ... same update logic as above
+        pass
+    url = data.get("next")
+```
+
+#### 8d. Verify Asset Metadata
+
+Spot-check a few assets to confirm the metadata was saved:
+
+```python
+resp = requests.get(f"{DANDI_API}/dandisets/{DANDISET_ID}/versions/draft/assets/", headers=HEADERS)
+for asset_info in resp.json()["results"][:5]:
+    meta = requests.get(f"{DANDI_API}/assets/{asset_info['asset_id']}/", headers=HEADERS).json()
+    about = meta.get("about", [])
+    print(f"  {asset_info['path']}: {[a['name'] for a in about] if about else '(none)'}")
+```
 
 ### Testing with Sandbox
 
