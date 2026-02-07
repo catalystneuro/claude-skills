@@ -105,6 +105,28 @@ dandi validate .
 dandi upload
 ```
 
+### Step 5b: Upload Using DANDI Python API (Alternative)
+
+If the CLI approaches have issues (e.g., sandbox identifier format), use the Python API directly:
+
+```python
+from pathlib import Path
+from dandi.dandiapi import DandiAPIClient
+
+client = DandiAPIClient.from_environ()  # or DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
+client.dandi_authenticate()
+dandiset = client.get_dandiset("000123", "draft")
+
+# Upload each organized NWB file
+nwb_dir = Path("./000123")
+for nwb_path in sorted(nwb_dir.rglob("*.nwb")):
+    asset_path = str(nwb_path.relative_to(nwb_dir))
+    print(f"Uploading {asset_path}...")
+    for status in dandiset.iter_upload_raw_asset(nwb_path, asset_metadata={"path": asset_path}):
+        if isinstance(status, dict) and status.get("status") == "done":
+            print(f"  Done: {status['asset'].path}")
+```
+
 ### Step 6: Verify on DANDI
 
 After upload completes:
@@ -132,16 +154,13 @@ and affiliations.
 #### 7a. Fetch Structured Data from OpenAlex
 
 If the user provides a DOI, query OpenAlex to get authors, ORCIDs, affiliations, ROR IDs,
-and funding info. Use the `select` parameter to reduce response size:
+and funding info:
 
 ```python
 import requests
 
-doi = "10.1038/s41586-023-06031-6"  # user-provided
-response = requests.get(
-    f"https://api.openalex.org/works/doi:{doi}",
-    params={"select": "id,doi,title,display_name,authorships,publication_year,publication_date,grants,keywords"},
-)
+doi = "10.1038/s41467-023-43250-x"  # user-provided
+response = requests.get(f"https://api.openalex.org/works/doi:{doi}")
 work = response.json()
 
 # Title
@@ -158,6 +177,8 @@ for authorship in work["authorships"]:
         inst_ror = inst.get("ror")          # e.g., "https://ror.org/00hj8s172"
 
 # Funders with ROR IDs and award numbers
+# NOTE: OpenAlex grants are often empty — check the paper's acknowledgments section
+# and ask the user to confirm funding information
 for grant in work.get("grants", []):
     funder_name = grant["funder_display_name"]  # e.g., "National Institute of Mental Health"
     funder_ror = grant.get("funder", {}).get("ror")  # e.g., "https://ror.org/04xeg9z08"
@@ -257,10 +278,33 @@ Supported ontology → `schemaKey` mapping:
 
 #### 7d. Build the Metadata and Set via DANDI API
 
-Use the `dandi` Python client to programmatically update the Dandiset metadata:
+Use the `dandi` Python client to programmatically update the Dandiset metadata.
+
+**IMPORTANT**: Never call `set_raw_metadata()` directly — it accepts invalid metadata silently.
+Always use this `validate_and_save` wrapper that validates against the DANDI JSON schema first:
 
 ```python
+import requests, jsonschema
 from dandi.dandiapi import DandiAPIClient
+
+def validate_and_save(dandiset, metadata):
+    """Validate metadata against DANDI schema, then save. Raises on invalid metadata."""
+    schema_version = metadata["schemaVersion"]
+    schema_url = f"https://raw.githubusercontent.com/dandi/schema/refs/heads/master/releases/{schema_version}/dandiset.json"
+    schema = requests.get(schema_url).json()
+
+    validator = jsonschema.Draft202012Validator(schema)
+    errors = sorted(validator.iter_errors(metadata), key=lambda e: list(e.absolute_path))
+    if errors:
+        print(f"Schema validation FAILED ({len(errors)} errors):")
+        for err in errors:
+            path = ".".join(str(p) for p in err.absolute_path)
+            print(f"  {path}: {err.message}")
+        raise ValueError("Fix validation errors before saving")
+
+    dandiset.set_raw_metadata(metadata)
+    ds_id = metadata.get("identifier", "").replace("DANDI:", "")
+    print(f"Metadata validated and saved!")
 
 client = DandiAPIClient.from_environ()  # uses DANDI_API_KEY env var
 dandiset = client.get_dandiset("000123", "draft")
@@ -304,11 +348,12 @@ for authorship in work["authorships"]:
     if authorship["is_corresponding"]:
         person["email"] = contact_email  # must ask user for this
 
-    # Add affiliation
+    # Add affiliation — IMPORTANT: schemaKey must be "Affiliation", not "Organization"
+    # "Organization" is for top-level contributors (funders); "Affiliation" is for person affiliations
     affiliations = []
     for inst in authorship.get("institutions", []):
         aff = {
-            "schemaKey": "Organization",
+            "schemaKey": "Affiliation",
             "name": inst["display_name"],
         }
         if inst.get("ror"):
@@ -320,16 +365,21 @@ for authorship in work["authorships"]:
     contributors.append(person)
 ```
 
-**Add the CatalystNeuro data curator:**
+**Add data curators (the people who performed the conversion):**
+
+Data curators are NOT authors — they get `dcite:DataCurator` role only, and
+`includeInCitation: False` unless they made intellectual contributions to the dataset.
+
 ```python
+# Add each person who worked on the NWB conversion
 contributors.append({
     "schemaKey": "Person",
-    "name": "Dichter, Benjamin",
-    "identifier": "0000-0001-5725-6910",
+    "name": "Last, First",  # person who ran the conversion
+    "identifier": "0000-0001-2345-6789",  # their ORCID
     "roleName": ["dcite:DataCurator"],
-    "includeInCitation": True,
-    "email": "ben.dichter@catalystneuro.com",
-    "affiliation": [{"schemaKey": "Organization", "name": "CatalystNeuro"}],
+    "includeInCitation": False,
+    "email": "curator@example.com",
+    "affiliation": [{"schemaKey": "Affiliation", "name": "CatalystNeuro"}],
 })
 ```
 
@@ -380,6 +430,14 @@ related.append({
 metadata["relatedResource"] = related
 ```
 
+**Add ontology terms to `about` (from 7c results):**
+```python
+metadata["about"] = [
+    {"schemaKey": "Anatomy", "name": "hippocampal formation", "identifier": "UBERON:0002421"},
+    # add more terms as appropriate for the experiment
+]
+```
+
 **Add ethics approval (ask user):**
 ```python
 metadata["ethicsApproval"] = [{
@@ -401,10 +459,9 @@ metadata["access"] = [{
 }]
 ```
 
-**Save metadata:**
+**Validate and save (uses the wrapper defined above — never call `set_raw_metadata` directly):**
 ```python
-dandiset.set_raw_metadata(metadata)
-print(f"Metadata updated: https://dandiarchive.org/dandiset/000123/draft")
+validate_and_save(dandiset, metadata)
 ```
 
 #### 7e. Metadata Quality Checklist
