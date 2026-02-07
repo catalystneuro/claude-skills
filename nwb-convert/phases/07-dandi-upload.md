@@ -119,6 +119,251 @@ After upload completes:
 > When you're ready to publish (make it permanently citable with a DOI),
 > click "Publish" on the Dandiset page. This creates an immutable version.
 
+### Step 7: Edit Dandiset Metadata
+
+After uploading, programmatically populate the Dandiset metadata using the DANDI API.
+If there is an associated manuscript, use OpenAlex to auto-populate contributors, funders,
+and affiliations.
+
+> Now let's complete your Dandiset metadata so it's ready for publication.
+> Is there an associated publication or preprint? If so, please share the DOI
+> (e.g., `10.1038/s41586-023-06031-6`).
+
+#### 7a. Fetch Structured Data from OpenAlex
+
+If the user provides a DOI, query OpenAlex to get authors, ORCIDs, affiliations, ROR IDs,
+and funding info:
+
+```python
+import requests
+
+doi = "10.1038/s41586-023-06031-6"  # user-provided
+response = requests.get(f"https://api.openalex.org/works/doi:{doi}")
+work = response.json()
+
+# Title and abstract
+title = work["title"]
+abstract = work.get("abstract_inverted_index")  # needs reconstruction if inverted index
+
+# Authors with ORCIDs, affiliations, and ROR IDs
+for authorship in work["authorships"]:
+    author = authorship["author"]
+    name = author["display_name"]           # e.g., "Steffen Schneider"
+    orcid = author.get("orcid")             # e.g., "https://orcid.org/0000-0003-2327-6459"
+    is_corresponding = authorship["is_corresponding"]
+    for inst in authorship.get("institutions", []):
+        inst_name = inst["display_name"]    # e.g., "Columbia University"
+        inst_ror = inst.get("ror")          # e.g., "https://ror.org/00hj8s172"
+
+# Funders with ROR IDs and award numbers
+for grant in work.get("grants", []):
+    funder_name = grant["funder_display_name"]  # e.g., "National Institute of Mental Health"
+    funder_ror = grant.get("funder", {}).get("ror")  # e.g., "https://ror.org/04xeg9z08"
+    award_id = grant.get("funder_award_id")     # e.g., "R21MH117788"
+```
+
+Present the extracted data to the user for confirmation:
+
+> I found the following from OpenAlex for your paper "{title}":
+>
+> **Authors:**
+> 1. Last, First (ORCID: 0000-...) — Institution (ROR: ...)
+> 2. ...
+>
+> **Funding:**
+> 1. Agency Name — Award: XYZ123 (ROR: ...)
+>
+> Does this look correct? Should I add or remove anyone? Who should be the contact person?
+
+#### 7b. Build the Metadata and Set via DANDI API
+
+Use the `dandi` Python client to programmatically update the Dandiset metadata:
+
+```python
+from dandi.dandiapi import DandiAPIClient
+
+client = DandiAPIClient.from_environ()  # uses DANDI_API_KEY env var
+dandiset = client.get_dandiset("000123", "draft")
+metadata = dandiset.get_raw_metadata()
+```
+
+**Set title and description:**
+```python
+metadata["name"] = title  # from OpenAlex or user
+metadata["description"] = description  # paper abstract or user-provided
+metadata["keywords"] = ["hippocampus", "electrophysiology", "place cells"]  # user-provided
+```
+
+**Set contributors (persons):**
+Convert OpenAlex author names from "First Last" to "Last, First" format. Mark the
+corresponding author as ContactPerson. Mark all authors with `includeInCitation: True`.
+
+```python
+contributors = []
+for authorship in work["authorships"]:
+    author = authorship["author"]
+    display_name = author["display_name"]
+    # Convert "First Last" → "Last, First"
+    parts = display_name.rsplit(" ", 1)
+    dandi_name = f"{parts[-1]}, {parts[0]}" if len(parts) == 2 else display_name
+
+    orcid = author.get("orcid", "").replace("https://orcid.org/", "")
+    roles = ["dcite:Author"]
+    if authorship["is_corresponding"]:
+        roles.append("dcite:ContactPerson")
+
+    person = {
+        "schemaKey": "Person",
+        "name": dandi_name,
+        "roleName": roles,
+        "includeInCitation": True,
+    }
+    if orcid:
+        person["identifier"] = orcid
+    # Add email for contact person (ask user)
+    if authorship["is_corresponding"]:
+        person["email"] = contact_email  # must ask user for this
+
+    # Add affiliation
+    affiliations = []
+    for inst in authorship.get("institutions", []):
+        aff = {
+            "schemaKey": "Affiliation",
+            "name": inst["display_name"],
+        }
+        if inst.get("ror"):
+            aff["identifier"] = inst["ror"]
+        affiliations.append(aff)
+    if affiliations:
+        person["affiliation"] = affiliations
+
+    contributors.append(person)
+```
+
+**Add the CatalystNeuro data curator:**
+```python
+contributors.append({
+    "schemaKey": "Person",
+    "name": "Dichter, Benjamin",
+    "identifier": "0000-0001-5725-6910",
+    "roleName": ["dcite:DataCurator"],
+    "includeInCitation": True,
+    "email": "ben.dichter@catalystneuro.com",
+    "affiliation": [{"schemaKey": "Affiliation", "name": "CatalystNeuro"}],
+})
+```
+
+**Add funders as Organization contributors:**
+```python
+for grant in work.get("grants", []):
+    funder = {
+        "schemaKey": "Organization",
+        "name": grant["funder_display_name"],
+        "roleName": ["dcite:Funder"],
+        "includeInCitation": False,
+    }
+    if grant.get("funder", {}).get("ror"):
+        funder["identifier"] = grant["funder"]["ror"]
+    if grant.get("funder_award_id"):
+        funder["awardNumber"] = grant["funder_award_id"]
+    contributors.append(funder)
+```
+
+**Set contributors on metadata:**
+```python
+metadata["contributor"] = contributors
+```
+
+**Add related resources:**
+```python
+related = []
+
+# Associated publication
+related.append({
+    "schemaKey": "Resource",
+    "identifier": f"doi:{doi}",
+    "url": f"https://doi.org/{doi}",
+    "name": title,
+    "relation": "dcite:IsDescribedBy",
+    "resourceType": "dcite:JournalArticle",  # or dcite:Preprint
+})
+
+# Conversion code repo (if on GitHub)
+related.append({
+    "schemaKey": "Resource",
+    "url": "https://github.com/catalystneuro/lab-to-nwb",
+    "name": "NWB conversion code",
+    "relation": "dcite:IsSupplementedBy",
+    "resourceType": "dcite:Software",
+})
+
+metadata["relatedResource"] = related
+```
+
+**Add ethics approval (ask user):**
+```python
+metadata["ethicsApproval"] = [{
+    "schemaKey": "EthicsApproval",
+    "identifier": "IACUC Protocol #12345",  # ask user
+    "contactPoint": {
+        "schemaKey": "ContactPoint",
+        "name": "Columbia University IACUC",  # ask user
+    },
+}]
+```
+
+**Set license and access:**
+```python
+metadata["license"] = ["spdx:CC-BY-4.0"]
+metadata["access"] = [{
+    "schemaKey": "AccessRequirements",
+    "status": "dandi:OpenAccess",
+}]
+```
+
+**Save metadata:**
+```python
+dandiset.set_raw_metadata(metadata)
+print(f"Metadata updated: https://dandiarchive.org/dandiset/000123/draft")
+```
+
+#### 7c. Metadata Fields Reference
+
+| Field | Required | Source |
+|-------|----------|--------|
+| `name` (title) | Yes | OpenAlex title or user |
+| `description` | Yes | OpenAlex abstract or user |
+| `contributor` (persons) | Yes (≥1 ContactPerson with email) | OpenAlex authorships |
+| `contributor` (funders) | Recommended | OpenAlex grants |
+| `license` | Yes | Default: `spdx:CC-BY-4.0` |
+| `access` | Yes | Default: `dandi:OpenAccess` |
+| `relatedResource` | Recommended | DOI, GitHub repo URL |
+| `keywords` | Recommended | User-provided |
+| `ethicsApproval` | Recommended | User-provided |
+| `about` (subject matter) | Optional | Anatomy ontology terms |
+
+#### 7d. Additional Metadata to Ask the User
+
+After auto-populating from OpenAlex, ask the user for anything that can't be extracted:
+
+> I've populated the metadata from your paper. A few more things:
+>
+> 1. **Contact person email**: What email should be listed for the contact person?
+> 2. **Ethics approval**: What is your IACUC/IRB protocol number and institution?
+> 3. **Keywords**: What keywords should I add for discoverability?
+> 4. **Any additional contributors** not on the paper (e.g., data curators, technicians)?
+
+#### Publishing
+
+> When all metadata is complete and you're ready to make your dataset permanently citable:
+> 1. Review the metadata at your Dandiset URL
+> 2. Click "Publish" on the Dandiset page
+> 3. This creates an immutable version with a DOI
+> 4. The DOI can be used in publications to reference this exact version of the data
+>
+> Note: You can continue uploading files and publish new versions later. Each version
+> gets its own DOI.
+
 ### Testing with Sandbox
 
 For testing uploads before going to production:
