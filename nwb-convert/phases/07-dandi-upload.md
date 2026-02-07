@@ -132,18 +132,20 @@ and affiliations.
 #### 7a. Fetch Structured Data from OpenAlex
 
 If the user provides a DOI, query OpenAlex to get authors, ORCIDs, affiliations, ROR IDs,
-and funding info:
+and funding info. Use the `select` parameter to reduce response size:
 
 ```python
 import requests
 
 doi = "10.1038/s41586-023-06031-6"  # user-provided
-response = requests.get(f"https://api.openalex.org/works/doi:{doi}")
+response = requests.get(
+    f"https://api.openalex.org/works/doi:{doi}",
+    params={"select": "id,doi,title,display_name,authorships,publication_year,publication_date,grants,keywords"},
+)
 work = response.json()
 
-# Title and abstract
+# Title
 title = work["title"]
-abstract = work.get("abstract_inverted_index")  # needs reconstruction if inverted index
 
 # Authors with ORCIDs, affiliations, and ROR IDs
 for authorship in work["authorships"]:
@@ -175,7 +177,85 @@ Present the extracted data to the user for confirmation:
 >
 > Does this look correct? Should I add or remove anyone? Who should be the contact person?
 
-#### 7b. Build the Metadata and Set via DANDI API
+#### 7b. Validate Identifiers
+
+Before applying any metadata, validate all ORCID and ROR identifiers against their
+respective APIs to prevent bad data from being committed:
+
+```python
+def validate_orcid(orcid: str) -> bool:
+    """Validate ORCID exists. orcid should be bare ID like '0000-0001-2345-6789'."""
+    resp = requests.head(
+        f"https://pub.orcid.org/v3.0/{orcid}",
+        headers={"Accept": "application/json"},
+    )
+    return resp.status_code == 200
+
+def validate_ror(ror_url: str) -> bool:
+    """Validate ROR ID exists. ror_url like 'https://ror.org/01cwqze88'."""
+    ror_id = ror_url.replace("https://ror.org/", "")
+    resp = requests.get(f"https://api.ror.org/organizations/{ror_id}")
+    return resp.status_code == 200
+```
+
+Run validation on all extracted identifiers and warn the user about any that fail:
+
+```python
+for authorship in work["authorships"]:
+    orcid = authorship["author"].get("orcid", "").replace("https://orcid.org/", "")
+    if orcid and not validate_orcid(orcid):
+        print(f"WARNING: ORCID {orcid} for {authorship['author']['display_name']} not found")
+
+    for inst in authorship.get("institutions", []):
+        ror = inst.get("ror")
+        if ror and not validate_ror(ror):
+            print(f"WARNING: ROR {ror} for {inst['display_name']} not found")
+```
+
+#### 7c. Look Up Ontology Terms for the `about` Field
+
+Use the EBI Ontology Lookup Service (OLS4) to find proper ontology identifiers for brain
+regions, disorders, and cell types. Never guess or fabricate ontology identifiers.
+
+```python
+def lookup_ontology_term(term: str, ontology: str = "uberon") -> list[dict]:
+    """Search EBI OLS4 for an ontology term.
+
+    ontology: 'uberon' (anatomy), 'doid' (disease), 'cl' (cell type)
+    """
+    resp = requests.get(
+        "https://www.ebi.ac.uk/ols4/api/search",
+        params={"q": term, "ontology": ontology, "rows": "5", "queryFields": "label,synonym"},
+    )
+    results = resp.json().get("response", {}).get("docs", [])
+    return [{"label": r["label"], "iri": r["iri"], "obo_id": r.get("obo_id")} for r in results]
+
+# Example: look up "hippocampus"
+terms = lookup_ontology_term("hippocampus", "uberon")
+# → [{"label": "hippocampal formation", "iri": "http://purl.obolibrary.org/obo/UBERON_0002421",
+#      "obo_id": "UBERON:0002421"}, ...]
+```
+
+Present results to the user and add confirmed terms to `about`:
+```python
+metadata["about"] = [
+    {
+        "schemaKey": "Anatomy",
+        "name": "hippocampal formation",
+        "identifier": "UBERON:0002421",
+    },
+]
+```
+
+Supported ontology → `schemaKey` mapping:
+| Ontology | `schemaKey` | Use for |
+|----------|-------------|---------|
+| UBERON | `Anatomy` | Brain regions, anatomical structures |
+| DOID | `Disorder` | Diseases, disorders |
+| CL | `Anatomy` | Cell types |
+| HP | `Disorder` | Human phenotypes |
+
+#### 7d. Build the Metadata and Set via DANDI API
 
 Use the `dandi` Python client to programmatically update the Dandiset metadata:
 
@@ -228,7 +308,7 @@ for authorship in work["authorships"]:
     affiliations = []
     for inst in authorship.get("institutions", []):
         aff = {
-            "schemaKey": "Affiliation",
+            "schemaKey": "Organization",
             "name": inst["display_name"],
         }
         if inst.get("ror"):
@@ -249,7 +329,7 @@ contributors.append({
     "roleName": ["dcite:DataCurator"],
     "includeInCitation": True,
     "email": "ben.dichter@catalystneuro.com",
-    "affiliation": [{"schemaKey": "Affiliation", "name": "CatalystNeuro"}],
+    "affiliation": [{"schemaKey": "Organization", "name": "CatalystNeuro"}],
 })
 ```
 
@@ -327,22 +407,24 @@ dandiset.set_raw_metadata(metadata)
 print(f"Metadata updated: https://dandiarchive.org/dandiset/000123/draft")
 ```
 
-#### 7c. Metadata Fields Reference
+#### 7e. Metadata Quality Checklist
 
-| Field | Required | Source |
-|-------|----------|--------|
-| `name` (title) | Yes | OpenAlex title or user |
-| `description` | Yes | OpenAlex abstract or user |
-| `contributor` (persons) | Yes (≥1 ContactPerson with email) | OpenAlex authorships |
-| `contributor` (funders) | Recommended | OpenAlex grants |
-| `license` | Yes | Default: `spdx:CC-BY-4.0` |
-| `access` | Yes | Default: `dandi:OpenAccess` |
-| `relatedResource` | Recommended | DOI, GitHub repo URL |
-| `keywords` | Recommended | User-provided |
-| `ethicsApproval` | Recommended | User-provided |
-| `about` (subject matter) | Optional | Anatomy ontology terms |
+Before saving, verify the metadata covers all quality criteria:
 
-#### 7d. Additional Metadata to Ask the User
+- [ ] Is the title descriptive and publication-quality?
+- [ ] Does the description mention data modalities and recording methods?
+- [ ] Does the description include a brief methodology summary?
+- [ ] Are associated publications linked with DOIs and correct relation (`dcite:IsDescribedBy`)?
+- [ ] Are all paper authors listed as contributors with ORCIDs?
+- [ ] Do contributors have institutional affiliations with ROR identifiers?
+- [ ] Are funders listed with award numbers and ROR identifiers?
+- [ ] Are relevant brain regions / anatomical structures in the `about` field (UBERON)?
+- [ ] Is the license specified (`spdx:CC-BY-4.0`)?
+- [ ] Is the IACUC/IRB protocol number included in `ethicsApproval`?
+- [ ] Are keywords provided for discoverability?
+- [ ] Is at least one contributor marked as `dcite:ContactPerson` with an email?
+
+#### 7f. Additional Metadata to Ask the User
 
 After auto-populating from OpenAlex, ask the user for anything that can't be extracted:
 
@@ -351,7 +433,8 @@ After auto-populating from OpenAlex, ask the user for anything that can't be ext
 > 1. **Contact person email**: What email should be listed for the contact person?
 > 2. **Ethics approval**: What is your IACUC/IRB protocol number and institution?
 > 3. **Keywords**: What keywords should I add for discoverability?
-> 4. **Any additional contributors** not on the paper (e.g., data curators, technicians)?
+> 4. **Brain regions**: What brain regions were recorded? I'll look up the UBERON terms.
+> 5. **Any additional contributors** not on the paper (e.g., data curators, technicians)?
 
 #### Publishing
 
@@ -379,15 +462,25 @@ automatic_dandi_upload(
 
 Or with the CLI:
 ```bash
-# Set sandbox API key
-export DANDI_SANDBOX_API_KEY=your_sandbox_key
+# Get your sandbox API key from https://sandbox.dandiarchive.org/
+export DANDI_API_KEY=your_sandbox_key
 
 # Upload to sandbox
 dandi upload -i dandi-sandbox
 ```
 
-The sandbox server is at https://gui-staging.dandiarchive.org/ — create a separate
-Dandiset there for testing.
+For programmatic metadata editing on the sandbox, use:
+```python
+from dandi.dandiapi import DandiAPIClient
+
+client = DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
+client.dandi_authenticate()
+dandiset = client.get_dandiset("000123", "draft")
+# ... same metadata operations as production
+```
+
+The sandbox server is at https://sandbox.dandiarchive.org/ (API: https://api.sandbox.dandiarchive.org/) —
+create a separate account and Dandiset there for testing.
 
 ### Common Issues
 
