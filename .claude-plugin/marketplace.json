@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "CatalystNeuro skills for standardization and analysis of open neurophysiology data.",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
@@ -38,6 +38,16 @@
       "strict": false,
       "skills": [
         "./using-pynapple"
+      ]
+    },
+    {
+      "name": "nwb-convert",
+      "description": "Convert neurophysiology data to NWB format and publish on DANDI. Guides through experiment discovery, data inspection, metadata collection, synchronization, code generation, testing, and upload. Generates a pip-installable conversion repo using NeuroConv and PyNWB.",
+      "source": "./",
+      "version": "0.1.0",
+      "strict": false,
+      "skills": [
+        "./nwb-convert"
       ]
     }
   ]
