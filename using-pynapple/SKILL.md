@@ -50,7 +50,7 @@ nap.nap_config.suppress_conversion_warnings = True
 import pynapple as nap
 import numpy as np
 
-# 1. Load data from NWB file
+# 1. Load data (local file or streamed from DANDI - see references/streaming-from-dandi.md)
 data = nap.load_file("session.nwb")
 spikes = data["units"]         # TsGroup
 position = data["position"]   # Tsd
@@ -107,6 +107,7 @@ Based on what you need, read the appropriate reference file:
 
 | Task | Reference |
 |------|-----------|
+| Streaming NWB from DANDI (remfile, LINDI, S3 URLs) | `./references/streaming-from-dandi.md` |
 | Creating Ts, Tsd, TsdFrame, TsGroup, IntervalSet | `./references/data-structures.md` |
 | restrict, count, smooth, interpolate, bin_average, derivative, value_from, threshold | `./references/data-manipulation.md` |
 | Metadata: set_info, getby_threshold, getby_category, groupby | `./references/metadata-and-filtering.md` |
@@ -125,10 +126,32 @@ as inputs and outputs throughout its workflow.
 
 ## Loading NWB Data
 
+**Local files:**
 ```python
 data = nap.load_file("path/to/file.nwb")
 print(data)  # shows available keys and types
+```
 
+**Streaming from DANDI with remfile** (see `./references/streaming-from-dandi.md`):
+```python
+from dandi.dandiapi import DandiAPIClient
+import h5py, remfile
+from pynwb import NWBHDF5IO
+
+with DandiAPIClient() as client:
+    asset = client.get_dandiset("000006", "draft").get_asset_by_path("sub-anm372795/sub-anm372795_ses-20170718.nwb")
+    s3_url = asset.get_content_url(follow_redirects=1, strip_query=True)
+
+rem_file = remfile.File(s3_url, disk_cache=remfile.DiskCache("/tmp/remfile_cache"))
+h5py_file = h5py.File(rem_file, "r")
+io = NWBHDF5IO(file=h5py_file, load_namespaces=True)
+nwbfile = io.read()
+data = nap.NWBFile(nwbfile)
+print(data)
+```
+
+**Accessing data (same for both methods):**
+```python
 spikes = data["units"]              # TsGroup of spike trains
 lfp = data["eeg"][:, 0]            # Tsd (single channel from TsdFrame)
 position = data["position"]         # Tsd
