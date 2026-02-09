@@ -10,6 +10,57 @@
 - The source_data arguments needed (file paths, stream IDs, etc.)
 - Any quirks or issues (corrupt files, missing headers, unusual organization)
 
+### Cross-Reference with Conversion Registry
+
+Before inspecting files, check the registry's `format_hints` to accelerate interface identification.
+If the registry was fetched in Phase 1, use it to pre-match file patterns:
+
+```python
+import yaml
+from fnmatch import fnmatch
+from pathlib import Path
+
+registry_path = Path("/tmp/registry.yaml")
+if not registry_path.exists() or registry_path.stat().st_size == 0:
+    print("Registry not available — skipping format hint matching")
+    registry = {"format_hints": []}
+else:
+    with open(registry_path) as f:
+        registry = yaml.safe_load(f)
+
+# Collect actual filenames from the data directory
+data_path = Path("<sample_session_path>")
+filenames = [f.name for f in data_path.rglob("*") if f.is_file()]
+
+# Match filenames against registry format_hints using glob matching
+matched_interfaces = {}  # interface_name → list of (pattern, seen_in)
+for hint in registry.get("format_hints", []):
+    for pattern in hint["patterns"]:
+        for filename in filenames:
+            if fnmatch(filename, pattern):
+                iface = hint["interface"]
+                if iface not in matched_interfaces:
+                    matched_interfaces[iface] = []
+                matched_interfaces[iface].append({
+                    "pattern": pattern,
+                    "matched_file": filename,
+                    "seen_in": hint["seen_in"],
+                })
+                break  # One match per pattern is enough
+
+for iface, matches in matched_interfaces.items():
+    repos = set()
+    for m in matches:
+        repos.update(m["seen_in"])
+    print(f"Registry match: {iface} (seen in {sorted(repos)})")
+    for m in matches:
+        print(f"  {m['pattern']} matched {m['matched_file']}")
+```
+
+When a filename matches a `format_hint` pattern, you can proceed with higher confidence in the
+interface selection. If the same pattern has been used successfully in prior conversions,
+mention this to the user and skip exploratory probing for that stream.
+
 ### Approach
 
 1. **Ask for a sample session** — a single, complete session with all data streams:
@@ -94,4 +145,13 @@ Add an "Interface Mapping" section:
 | Sorting | PhySortingInterface | folder_path | Verified |
 | VR position | CUSTOM: VRBehaviorInterface | file_path | Needs implementation |
 | Lick events | CUSTOM: EventsInterface | folder_path | Needs implementation |
+```
+
+### Push Phase 2 Results
+
+After updating `conversion_notes.md` with the interface mapping, commit and push:
+```bash
+git add conversion_notes.md
+git commit -m "Phase 2: data inspection — interface mapping and format details"
+if git remote get-url origin &>/dev/null; then git push; fi
 ```

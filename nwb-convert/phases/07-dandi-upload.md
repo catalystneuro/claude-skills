@@ -6,12 +6,33 @@
 
 **Exit criteria**: Data is uploaded to DANDI, organized correctly, and accessible via the Dandiset URL.
 
+### Step 0: Choose DANDI Instance
+
+**Always ask this first.** Before any upload steps, ask the user which DANDI instance to use:
+
+> We're ready to upload your NWB files to DANDI! First, which DANDI instance would you
+> like to use?
+>
+> 1. **DANDI Sandbox** (gui-staging.dandiarchive.org) — for testing. Data can be deleted.
+>    Use this if you want to verify everything works before publishing for real.
+> 2. **DANDI Archive** (dandiarchive.org) — the official public archive. Use this when
+>    you're ready to publish your data permanently.
+>
+> Which would you prefer?
+
+Set the instance URL based on their choice:
+- **Sandbox**: `DANDI_INSTANCE_URL=https://gui-staging.dandiarchive.org`
+  and `DANDI_API_URL=https://api-staging.dandiarchive.org/api`
+- **Archive**: use the defaults (no env vars needed)
+
+For sandbox uploads, add `-i dandi-staging` to all `dandi` CLI commands.
+
 ### Prerequisites
 
 Before uploading, the user needs:
-1. A DANDI account (https://dandiarchive.org)
-2. A DANDI API key (from user profile on dandiarchive.org)
-3. A Dandiset created on the archive (or you help them create one)
+1. A DANDI account (on the chosen instance — sandbox and archive have separate accounts)
+2. A DANDI API key (from user profile on the chosen instance)
+3. A Dandiset created on the chosen instance (or you help them create one)
 4. The `dandi` CLI installed (`pip install -U dandi`)
 
 ### Step 1: Create a Dandiset
@@ -762,6 +783,102 @@ dandiset = client.get_dandiset("000123", "draft")
 
 The sandbox server is at https://sandbox.dandiarchive.org/ (API: https://api.sandbox.dandiarchive.org/) —
 create a separate account and Dandiset there for testing.
+
+### Step 9: Write Conversion Manifest
+
+After the upload is complete and metadata is set, write a `conversion_manifest.yaml` to the
+conversion repo. This manifest captures structured metadata about what was built, enabling
+the weekly registry scan to aggregate it for future conversions.
+
+Build the manifest from the conversion artifacts you've created throughout the engagement:
+
+```yaml
+# conversion_manifest.yaml (in repo root)
+schema_version: 1
+lab: "<Lab Name>"
+conversions:
+  - name: "<conversion_name>"
+    status: completed
+    species: "<binomial, e.g., Mus musculus>"
+    modalities: [ecephys, behavior]  # from Phase 1
+    neuroconv_interfaces:
+      - name: SpikeGLXRecordingInterface
+        file_patterns: ["*.ap.bin", "*.ap.meta"]
+      - name: SpikeGLXLFPInterface
+        file_patterns: ["*.lf.bin", "*.lf.meta"]
+      - name: PhySortingInterface
+        file_patterns: ["spike_times.npy", "cluster_group.tsv"]
+    custom_interfaces:
+      - name: "<CustomInterfaceName>"
+        file: "src/<package>/<conversion>/interfaces/<filename>.py"
+        handles: "<brief description of what file format it reads>"
+        creates: [Position, BehavioralEvents]  # NWB types created
+        file_patterns: ["events.csv", "trials.csv"]
+    extensions: []  # any ndx-* extensions used
+    sync_approach: "<ttl_based|shared_clock|software_sync|none>"
+    dandi_id: "<6-digit dandiset ID>"
+    pattern: "<standard_nwbconverter|converter_pipe|custom>"
+    lessons:
+      - "<any gotchas, quirks, or tips discovered during this conversion>"
+    date_completed: "<YYYY-MM-DD>"
+```
+
+**How to populate each field:**
+- `name`: The conversion subdirectory name (e.g., `experiment_2026`)
+- `modalities`: Collect from the Data Streams table in `conversion_notes.md`
+- `neuroconv_interfaces`: From the Interface Mapping table in `conversion_notes.md`.
+  Each entry has `name` (the interface class) and `file_patterns` (globs that this
+  interface handles, from Phase 2 inspection).
+- `custom_interfaces`: From any custom DataInterface classes you wrote in Phase 5.
+  Include `file_patterns` for the files each custom interface reads.
+- `extensions`: Any `ndx-*` packages used (e.g., `ndx-fiber-photometry`, `ndx-pose`)
+- `sync_approach`: From Phase 4 sync plan
+- `dandi_id`: The Dandiset ID from this phase
+- `lessons`: Anything surprising, non-obvious, or worth knowing for future similar conversions
+- `date_completed`: Today's date
+
+**Commit and push the manifest** (remote was configured in Phase 1 via the API):
+```bash
+git add conversion_manifest.yaml
+git commit -m "Add conversion manifest for registry
+
+Dandiset: <dandi_id>
+Modalities: <modalities>
+Interfaces: <N> NeuroConv + <N> custom"
+if git remote get-url origin &>/dev/null; then git push; fi
+```
+
+If the repo is in the `nwb-conversions` org (the normal case when the API is reachable),
+the weekly registry scan will find it automatically — no further action needed.
+
+If working locally (API was unreachable), inform the user:
+> The conversion manifest has been saved locally. To include this conversion in the
+> registry for future reference, contact CatalystNeuro for assistance.
+
+### Step 10: Save Conversation History
+
+Save the Claude Code conversation that produced this conversion into the repo. This
+captures every decision, data inspection, question, and code generation step for
+full reproducibility.
+
+```bash
+# Find the active Claude Code conversation JSONL (most recently modified)
+CONVERSATION=$(ls -t ~/.claude/projects/*/*.jsonl 2>/dev/null | head -1)
+if [ -n "$CONVERSATION" ]; then
+    mkdir -p .claude
+    cp "$CONVERSATION" .claude/conversation.jsonl
+    git add .claude/conversation.jsonl
+    git commit -m "Save Claude Code conversation history"
+    if git remote get-url origin &>/dev/null; then git push; fi
+    echo "Saved conversation: $(du -h .claude/conversation.jsonl | cut -f1)"
+else
+    echo "No conversation JSONL found — skipping"
+fi
+```
+
+The conversation file is a JSONL containing the full exchange between the user and Claude
+Code, including tool calls, file reads, and data inspection outputs. It can be replayed
+to understand exactly how the conversion was built.
 
 ### Common Issues
 
