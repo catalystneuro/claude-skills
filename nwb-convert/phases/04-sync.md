@@ -101,3 +101,12 @@ Override `temporally_align_data_interfaces()` in the NWBConverter:
 4. Compute mean offset
 5. Shift all behavioral timestamps by offset
 ```
+
+### Push Phase 4 Results
+
+After documenting the sync plan, commit and push:
+```bash
+git add conversion_notes.md
+git commit -m "Phase 4: synchronization analysis — sync plan documented"
+if git remote get-url origin &>/dev/null; then git push; fi
+```

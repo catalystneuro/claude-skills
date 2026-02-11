@@ -107,10 +107,10 @@ dependencies = [
 [project.urls]
 Repository = "https://github.com/catalystneuro/<lab>-lab-to-nwb"
 
-# Per-conversion pinned dependencies (install with: pip install -e .[conversion_name])
+# Per-conversion pinned dependencies (install with: uv pip install -e ".[conversion_name]")
 [project.optional-dependencies]
 <conversion_name> = [
-  "neuroconv==0.7.0",   # Pin to exact version used during development
+  "neuroconv",   # Use latest during development; pin to exact version only after conversion is finalized
   # Add conversion-specific extras here, e.g.:
   # "mne",
   # "opencv-python-headless",
@@ -165,7 +165,7 @@ ignore-words-list = 'assertin'
 ### Key points about dependencies
 
 - The top-level `dependencies` list should contain unpinned `neuroconv` and `nwbinspector` for broad compatibility.
-- Per-conversion optional dependencies should **pin exact versions** so that a specific conversion remains reproducible.
+- Per-conversion optional dependencies should be **unpinned during active development** (use latest). Only pin exact versions after the conversion is finalized and validated, to ensure reproducibility.
 - Conversion-specific extras (e.g., `mne` for EDF files, `opencv-python-headless` for video, NWB extension packages like `ndx-miniscope`) go in the optional dependencies section.
 
 ### Real-world example (cai-lab-to-nwb)
@@ -1306,7 +1306,7 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - run: pip install -e .
+    - run: pip install uv && uv pip install -e .
     - run: python -c "import <lab>_lab_to_nwb"
 ```
 

@@ -11,7 +11,8 @@ passes nwbinspector validation, and the data can be read back correctly.
 
 ```bash
 cd <repo_path>
-pip install -e ".[<conversion_name>]"
+source .venv/bin/activate
+uv pip install -e ".[<conversion_name>]"
 ```
 
 ### Step 2: Run a Stub Test
@@ -217,3 +218,15 @@ If any issues are found:
 - Print the metadata dict and compare with schema
 - Check for required fields that are None or empty
 - Check types (datetime vs string, list vs single value)
+
+### Push Phase 6 Results
+
+After all tests pass and nwbinspector is clean, commit any bug fixes and push:
+```bash
+git add -A
+git commit -m "Phase 6: testing and validation — all checks passing
+
+nwbinspector: 0 CRITICAL, 0 BEST_PRACTICE_VIOLATION
+dandi validate: passed"
+if git remote get-url origin &>/dev/null; then git push; fi
+```

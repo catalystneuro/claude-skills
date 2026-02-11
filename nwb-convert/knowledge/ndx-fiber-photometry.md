@@ -1,13 +1,14 @@
 # Fiber Photometry — ndx-fiber-photometry Patterns
 
-Construction patterns using the `ndx-fiber-photometry` extension (v0.2.4+).
+Construction patterns using the `ndx-fiber-photometry` extension (v0.2.3+)
+with `ndx-ophys-devices` (v0.3.1+).
 This is the **required** extension for fiber photometry data — do not store
 fiber photometry signals as plain TimeSeries.
 
 ## Installation
 
 ```bash
-pip install ndx-fiber-photometry
+uv pip install ndx-fiber-photometry
 ```
 
 Dependencies: `pynwb>=3.1.0`, `hdmf>=4.1.0`, `ndx-ophys-devices>=0.3.1`
@@ -23,6 +24,33 @@ The extension defines a structured hierarchy:
 5. **CommandedVoltageSeries** — optional voltage commands controlling excitation sources
 6. **FiberPhotometry** — LabMetaData container wrapping everything
 
+## ndx-ophys-devices v0.3.1+ API
+
+**IMPORTANT**: The ndx-ophys-devices API was significantly reworked in v0.3.x.
+Many parameters from earlier versions were removed or renamed. Always check
+the [ndx-fiber-photometry README](https://github.com/catalystneuro/ndx-fiber-photometry)
+for the canonical, up-to-date constructor signatures.
+
+Key changes from older versions:
+- **ExcitationSource**: No longer accepts `illumination_type` or
+  `excitation_wavelength_in_nm`. Now accepts `power_in_W`,
+  `intensity_in_W_per_m2`, `exposure_time_in_s`, `model`, `serial_number`.
+- **Photodetector**: No longer accepts `detector_type` or
+  `detected_wavelength_in_nm`. Now accepts `model`, `serial_number`.
+- **OpticalFiber**: No longer accepts `numerical_aperture` or
+  `core_diameter_in_um`. Now **requires** a `FiberInsertion` child object
+  (which must be named `"fiber_insertion"`). Accepts `model`, `serial_number`.
+- **FiberInsertion**: Accepts `insertion_position_ap_in_mm`,
+  `insertion_position_ml_in_mm`, `insertion_position_dv_in_mm`,
+  `position_reference`, `depth_in_mm`, `hemisphere`,
+  `insertion_angle_pitch_in_deg`.
+- **BandOpticalFilter** / **DichroicMirror**: No longer accept wavelength
+  parameters. Use `description` for filter specs.
+- **Indicator**: No longer accepts `injection_location`,
+  `excitation_wavelength_in_nm`, or `emission_wavelength_in_nm`. Now accepts
+  `viral_vector_injection` to link to injection metadata.
+- **FiberPhotometryIndicators**: Does **not** accept a `name` parameter.
+
 ## Complete Construction Example
 
 ```python
@@ -35,6 +63,7 @@ from ndx_fiber_photometry import (
 )
 from ndx_ophys_devices import (
     ExcitationSource,
+    FiberInsertion,
     OpticalFiber,
     Photodetector,
     BandOpticalFilter,
@@ -43,57 +72,60 @@ from ndx_ophys_devices import (
 )
 
 # ── Step 1: Create Devices ──────────────────────────────────────────────
+# See ndx-fiber-photometry README for all accepted parameters.
 
 excitation_source = ExcitationSource(
-    name="LED_465nm",
-    description="Blue LED for dLight excitation",
+    name="excitation_source_signal",
+    description="465 nm blue LED for dLight excitation",
     manufacturer="Doric Lenses",
-    illumination_type="LED",
-    excitation_wavelength_in_nm=465.0,
+    power_in_W=0.7,
 )
 nwbfile.add_device(excitation_source)
 
 excitation_source_isos = ExcitationSource(
-    name="LED_405nm",
-    description="Violet LED for isosbestic control",
+    name="excitation_source_isosbestic",
+    description="405 nm violet LED for isosbestic control",
     manufacturer="Doric Lenses",
-    illumination_type="LED",
-    excitation_wavelength_in_nm=405.0,
 )
 nwbfile.add_device(excitation_source_isos)
 
 photodetector = Photodetector(
-    name="Newport2151",
-    description="Femtowatt photoreceiver",
+    name="photodetector",
+    description="Femtowatt photoreceiver for green emission",
     manufacturer="Newport",
-    detector_type="photodiode",
-    detected_wavelength_in_nm=525.0,
 )
 nwbfile.add_device(photodetector)
 
+# OpticalFiber requires a FiberInsertion (must be named "fiber_insertion")
+fiber_insertion = FiberInsertion(
+    name="fiber_insertion",
+    insertion_position_ap_in_mm=0.5,
+    insertion_position_ml_in_mm=1.5,
+    insertion_position_dv_in_mm=-3.0,
+    depth_in_mm=3.5,
+    position_reference="bregma",
+    hemisphere="right",
+)
+
 optical_fiber = OpticalFiber(
-    name="Fiber_DMS",
-    description="400um 0.48NA fiber optic cannula",
+    name="optical_fiber",
+    description="400 um core, 0.48 NA fiber optic cannula",
     manufacturer="Doric Lenses",
-    numerical_aperture=0.48,
-    core_diameter_in_um=400.0,
+    fiber_insertion=fiber_insertion,
 )
 nwbfile.add_device(optical_fiber)
 
 dichroic_mirror = DichroicMirror(
-    name="DM_495",
-    description="495nm dichroic mirror",
+    name="dichroic_mirror",
+    description="495 nm dichroic mirror",
     manufacturer="Semrock",
-    cut_on_wavelength_in_nm=495.0,
 )
 nwbfile.add_device(dichroic_mirror)
 
 emission_filter = BandOpticalFilter(
-    name="BP_500_550",
-    description="500-550nm bandpass emission filter",
+    name="emission_filter",
+    description="500-550 nm bandpass emission filter",
     manufacturer="Semrock",
-    center_wavelength_in_nm=525.0,
-    bandwidth_in_nm=50.0,
 )
 nwbfile.add_device(emission_filter)
 
@@ -101,15 +133,12 @@ nwbfile.add_device(emission_filter)
 
 indicator = Indicator(
     name="dLight1.1",
-    description="Genetically-encoded dopamine sensor",
+    description="Genetically-encoded dopamine sensor dLight1.1",
     label="dLight1.1",
-    injection_location="DMS",
-    excitation_wavelength_in_nm=465.0,
-    emission_wavelength_in_nm=525.0,
 )
 
+# NOTE: FiberPhotometryIndicators does NOT accept a name parameter.
 indicators = FiberPhotometryIndicators(
-    name="fiber_photometry_indicators",
     indicators=[indicator],
 )
 
@@ -207,8 +236,23 @@ nwbfile.add_lab_meta_data(fiber_photometry)
 For experiments with multiple fibers (e.g., DMS + NAc):
 
 ```python
-fiber_dms = OpticalFiber(name="Fiber_DMS", ...)
-fiber_nac = OpticalFiber(name="Fiber_NAc", ...)
+# Each fiber needs its own FiberInsertion (all must be named "fiber_insertion"
+# but since they belong to different OpticalFiber objects, this is fine)
+fi_dms = FiberInsertion(
+    name="fiber_insertion",
+    insertion_position_ap_in_mm=0.5,
+    insertion_position_ml_in_mm=1.5,
+    insertion_position_dv_in_mm=-3.0,
+)
+fi_nac = FiberInsertion(
+    name="fiber_insertion",
+    insertion_position_ap_in_mm=1.2,
+    insertion_position_ml_in_mm=1.0,
+    insertion_position_dv_in_mm=-4.0,
+)
+
+fiber_dms = OpticalFiber(name="Fiber_DMS", description="...", fiber_insertion=fi_dms)
+fiber_nac = OpticalFiber(name="Fiber_NAc", description="...", fiber_insertion=fi_nac)
 nwbfile.add_device(fiber_dms)
 nwbfile.add_device(fiber_nac)
 
@@ -261,41 +305,31 @@ FiberPhotometry:
     - location: DMS
       excitation_wavelength_in_nm: 465.0
       emission_wavelength_in_nm: 525.0
-      coordinates: [0.5, 1.5, 3.0]    # AP, ML, DV in mm (optional)
 
   OpticalFibers:
     - name: Fiber_DMS
-      description: 400um 0.48NA fiber optic cannula
-      manufacturer: Doric Lenses
-      numerical_aperture: 0.48
-      core_diameter_in_um: 400.0
+      description: "400 um core, 0.48 NA fiber optic cannula (Doric Lenses)"
+
+  FiberInsertions:
+    - insertion_position_ap_in_mm: 0.5
+      insertion_position_ml_in_mm: 1.5
+      insertion_position_dv_in_mm: -3.0
+      position_reference: "bregma at cortical surface"
 
   ExcitationSources:
     - name: LED_465nm
-      description: Blue LED
-      manufacturer: Doric Lenses
-      illumination_type: LED
-      excitation_wavelength_in_nm: 465.0
+      description: "465 nm blue LED (Doric Lenses)"
     - name: LED_405nm
-      description: Violet LED (isosbestic)
-      manufacturer: Doric Lenses
-      illumination_type: LED
-      excitation_wavelength_in_nm: 405.0
+      description: "405 nm violet LED for isosbestic control (Doric Lenses)"
 
   Photodetectors:
     - name: Newport2151
-      description: Femtowatt photoreceiver
-      manufacturer: Newport
-      detector_type: photodiode
-      detected_wavelength_in_nm: 525.0
+      description: "Femtowatt photoreceiver, photodiode, ~525 nm detection (Newport)"
 
   Indicators:
     - name: dLight1.1
       label: dLight1.1
-      description: Genetically-encoded dopamine sensor
-      injection_location: DMS
-      excitation_wavelength_in_nm: 465.0
-      emission_wavelength_in_nm: 525.0
+      description: Genetically-encoded dopamine sensor dLight1.1
 ```
 
 ## Notes
@@ -309,3 +343,8 @@ FiberPhotometry:
 - The `FiberPhotometry` object is added as `lab_meta_data`, not in a processing module.
 - `FiberPhotometryResponseSeries` can go in `acquisition` (raw) or `processing` (processed).
 - `unit` for fluorescence data is typically `"F"` (arbitrary fluorescence units).
+- **ndx-ophys-devices v0.3.1+ breaking changes**: Many constructor parameters from
+  earlier versions were removed or renamed. See the "ndx-ophys-devices v0.3.1+ API"
+  section above for details. Always check the
+  [ndx-fiber-photometry README](https://github.com/catalystneuro/ndx-fiber-photometry)
+  for canonical constructor signatures.

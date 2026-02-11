@@ -129,6 +129,15 @@ Subject:
 Session-specific metadata (subject_id, session_start_time) is set programmatically
 in `convert_session.py` since it varies per session.
 
+### Push Phase 3 Results
+
+After collecting metadata, commit and push the metadata files:
+```bash
+git add conversion_notes.md metadata.yaml subject_metadata.yaml 2>/dev/null
+git commit -m "Phase 3: metadata collection — NWBFile, Subject, and device metadata"
+if git remote get-url origin &>/dev/null; then git push; fi
+```
+
 ### Per-Subject Metadata
 
 You MUST collect subject-level metadata for each subject. This is required for DANDI upload.
