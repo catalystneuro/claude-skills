@@ -20,10 +20,18 @@
 >
 > Which would you prefer?
 
-Set the instance URL based on their choice:
-- **Sandbox**: `DANDI_INSTANCE_URL=https://sandbox.dandiarchive.org`
-  and `DANDI_API_URL=https://api.sandbox.dandiarchive.org/api`
-- **Archive**: use the defaults (no env vars needed)
+Use separate environment variables for each instance so both can coexist:
+- **Sandbox**: `DANDI_SANDBOX_API_KEY` — key from https://sandbox.dandiarchive.org
+- **Production**: `DANDI_API_KEY` — key from https://dandiarchive.org
+
+When running commands, set `DANDI_API_KEY` to the appropriate value:
+```bash
+# For sandbox operations:
+export DANDI_API_KEY=$DANDI_SANDBOX_API_KEY
+
+# For production operations:
+# DANDI_API_KEY is already set (or export DANDI_API_KEY=<production-key>)
+```
 
 For sandbox uploads, add `-i dandi-sandbox` to all `dandi` CLI commands.
 
@@ -32,23 +40,48 @@ For sandbox uploads, add `-i dandi-sandbox` to all `dandi` CLI commands.
 Before uploading, the user needs:
 1. A DANDI account (on the chosen instance — sandbox and archive have separate accounts)
 2. A DANDI API key (from user profile on the chosen instance)
-3. A Dandiset created on the chosen instance (or you help them create one)
+3. A Dandiset created on the chosen instance (or create one programmatically — see Step 1)
 4. The `dandi` CLI installed (`uv pip install -U dandi`)
 
 ### Step 1: Create a Dandiset
 
-Guide the user through creating a Dandiset on the DANDI Archive:
+Create a Dandiset programmatically using the DANDI API:
 
-> Before we upload, we need to create a Dandiset on DANDI Archive. Have you already
-> created one? If not, here's how:
->
-> 1. Go to https://dandiarchive.org and log in (or create an account)
+```python
+from dandi.dandiapi import DandiAPIClient
+
+# For sandbox:
+client = DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
+# For production:
+# client = DandiAPIClient()  # uses default https://api.dandiarchive.org/api
+
+client.dandi_authenticate()
+
+dandiset = client.create_dandiset(
+    name="Descriptive title for your dataset",
+    metadata={
+        "schemaKey": "Dandiset",
+        "schemaVersion": "0.7.0",
+        "name": "Descriptive title for your dataset",
+        "description": "Abstract or summary of the dataset",
+        "license": ["spdx:CC-BY-4.0"],
+        "access": [{"schemaKey": "AccessRequirements", "status": "dandi:OpenAccess"}],
+        "contributor": [{
+            "schemaKey": "Person",
+            "name": "Last, First",
+            "roleName": ["dcite:ContactPerson"],
+            "includeInCitation": True,
+        }],
+    },
+)
+dandiset_id = dandiset.identifier
+print(f"Created Dandiset: {dandiset_id}")
+```
+
+Alternatively, guide the user through creating one manually on the web:
+> 1. Go to https://dandiarchive.org (or https://sandbox.dandiarchive.org for sandbox)
 > 2. Click "New Dandiset" in the top right
-> 3. Fill in the metadata:
->    - **Name**: A descriptive title for your dataset
->    - **Description**: Abstract or summary of the dataset
->    - **License**: Usually CC-BY-4.0 for open data
->    - **Contributors**: Add all contributors with their ORCID IDs
+> 3. Fill in: Name, Description, License (CC-BY-4.0), Contributors
 > 4. Note the 6-digit Dandiset ID (e.g., "000123")
 
 If the data should be embargoed (not publicly visible yet):
@@ -56,19 +89,25 @@ If the data should be embargoed (not publicly visible yet):
 > embargo option when creating the Dandiset. Embargoed data is only visible
 > to Dandiset owners until you release it.
 
-### Step 2: Set Up API Key
+### Step 2: Set Up API Keys
+
+Ask the user to set their API key(s) as labeled environment variables:
 
 ```bash
-# Get your API key from https://dandiarchive.org (click your initials → API Key)
-export DANDI_API_KEY=<your-key-here>
+# Sandbox key (from https://sandbox.dandiarchive.org → initials → API Key)
+export DANDI_SANDBOX_API_KEY=<your-sandbox-key>
+
+# Production key (from https://dandiarchive.org → initials → API Key)
+export DANDI_API_KEY=<your-production-key>
 ```
 
-> You'll need your DANDI API key. Go to https://dandiarchive.org, click your
-> initials in the top right, and copy your API key. Then set it as an environment
-> variable:
-> ```bash
-> export DANDI_API_KEY=your_key_here
-> ```
+Before running any `dandi` CLI commands, set `DANDI_API_KEY` to the correct key:
+```bash
+# For sandbox operations:
+export DANDI_API_KEY=$DANDI_SANDBOX_API_KEY
+```
+
+For Python API calls, pass the key explicitly via `DandiAPIClient` (see examples below).
 
 ### Step 3: Validate Before Upload
 
@@ -87,15 +126,21 @@ Fix any validation errors before proceeding.
 
 ### Step 4: Upload Using NeuroConv Helper (Recommended)
 
-NeuroConv provides `automatic_dandi_upload()` which handles download, organize, and upload:
+NeuroConv provides `automatic_dandi_upload()` which handles download, organize, and upload.
+**Important**: This function reads `DANDI_API_KEY` from the environment, so set it to the
+correct labeled key first:
 
 ```python
+import os
 from neuroconv.tools.data_transfers import automatic_dandi_upload
+
+# Set DANDI_API_KEY from the labeled env var for the chosen instance
+os.environ["DANDI_API_KEY"] = os.environ["DANDI_SANDBOX_API_KEY"]  # or just DANDI_API_KEY for production
 
 automatic_dandi_upload(
     dandiset_id="000123",           # 6-digit Dandiset ID
     nwb_folder_path="./nwb_output", # Folder with all NWB files
-    sandbox=False,                   # True for testing on sandbox server
+    sandbox=True,                    # True for sandbox, False for production
     number_of_jobs=1,               # Parallel upload jobs
     number_of_threads=4,            # Threads per upload
 )
@@ -131,10 +176,15 @@ dandi upload
 If the CLI approaches have issues (e.g., sandbox identifier format), use the Python API directly:
 
 ```python
+import os
 from pathlib import Path
 from dandi.dandiapi import DandiAPIClient
 
-client = DandiAPIClient.from_environ()  # or DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
+# For sandbox: set DANDI_API_KEY from the labeled sandbox key
+os.environ["DANDI_API_KEY"] = os.environ["DANDI_SANDBOX_API_KEY"]
+client = DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
+# For production:
+# client = DandiAPIClient()  # uses DANDI_API_KEY directly
 client.dandi_authenticate()
 dandiset = client.get_dandiset("000123", "draft")
 
@@ -395,7 +445,12 @@ def validate_and_save(dandiset, metadata):
     dandiset.set_raw_metadata(metadata)
     print("Metadata validated and saved!")
 
-client = DandiAPIClient.from_environ()  # uses DANDI_API_KEY env var
+# For sandbox:
+os.environ["DANDI_API_KEY"] = os.environ["DANDI_SANDBOX_API_KEY"]
+client = DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
+# For production:
+# client = DandiAPIClient()
+client.dandi_authenticate()
 dandiset = client.get_dandiset("000123", "draft")
 metadata = dandiset.get_raw_metadata()
 ```
@@ -763,21 +818,11 @@ automatic_dandi_upload(
 
 Or with the CLI:
 ```bash
-# Get your sandbox API key from https://sandbox.dandiarchive.org/
-export DANDI_API_KEY=your_sandbox_key
+# Point DANDI_API_KEY to the sandbox key
+export DANDI_API_KEY=$DANDI_SANDBOX_API_KEY
 
 # Upload to sandbox
 dandi upload -i dandi-sandbox
-```
-
-For programmatic metadata editing on the sandbox, use:
-```python
-from dandi.dandiapi import DandiAPIClient
-
-client = DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
-client.dandi_authenticate()
-dandiset = client.get_dandiset("000123", "draft")
-# ... same metadata operations as production
 ```
 
 The sandbox server is at https://sandbox.dandiarchive.org/ (API: https://api.sandbox.dandiarchive.org/) —
