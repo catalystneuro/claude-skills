@@ -11,7 +11,8 @@ passes nwbinspector validation, and the data can be read back correctly.
 
 ```bash
 cd <repo_path>
-pip install -e ".[<conversion_name>]"
+source .venv/bin/activate
+uv pip install -e ".[<conversion_name>]"
 ```
 
 ### Step 2: Run a Stub Test

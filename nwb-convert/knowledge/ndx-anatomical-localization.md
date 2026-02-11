@@ -7,7 +7,7 @@ against reference atlases (e.g., Allen CCFv3).
 ## Installation
 
 ```bash
-pip install ndx-anatomical-localization
+uv pip install ndx-anatomical-localization
 ```
 
 Dependencies: `pynwb>=2.8.0`, `hdmf>=3.14.1`, Python >= 3.10

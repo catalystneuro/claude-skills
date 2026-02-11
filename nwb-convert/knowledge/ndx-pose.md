@@ -6,7 +6,7 @@ Use this for pose estimation data from DeepLabCut, SLEAP, Lightning Pose, etc.
 ## Installation
 
 ```bash
-pip install ndx-pose
+uv pip install ndx-pose
 ```
 
 ## Overview

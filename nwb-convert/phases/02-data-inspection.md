@@ -4,6 +4,9 @@
 
 **Entry**: You have a general understanding of the experiment from Phase 1.
 
+**Note**: If data was mounted from Google Drive in Phase 1, all inspection uses
+the local mount point. Files are streamed on-demand and cached locally by rclone.
+
 **Exit criteria**: For each data stream, you know:
 - The exact file format and can read it programmatically
 - Which NeuroConv interface handles it (or that custom code is needed)
@@ -122,6 +125,34 @@ mention this to the user and skip exploratory probing for that stream.
    - Document the file format, structure, and what data/metadata it contains
    - Note what NWB types the data should map to (TimeSeries, SpatialSeries, TimeIntervals, etc.)
    - Flag these for Phase 5 code generation
+
+### Identifying Processed vs. Raw Data
+
+During inspection, watch for signs that data has been post-processed rather than coming
+directly off the acquisition system. Common indicators:
+
+- **Trialized structure**: Data organized into trials/epochs with inter-trial data removed
+  (e.g., MATLAB struct arrays with fields like `trial(1).spikes`, `trial(1).lfp`)
+- **Pre-computed derived quantities**: Rate maps, tuning curves, PSTHs, averaged traces,
+  z-scored signals — these are analysis outputs, not raw data
+- **Resampled or interpolated data**: Timestamps at suspiciously round intervals, or data
+  streams that should have different sampling rates but don't
+- **Float conversion of integer data**: Electrophysiology stored as float64 instead of
+  int16 (raw acquisition is almost always integer)
+- **Cropped time windows**: Data that starts at t=0 for each trial rather than having
+  continuous session timestamps
+- **Custom .mat or .pkl files**: Often contain lab-specific processed structures. Check if
+  the original acquisition files (.bin, .dat, .tif, .rhd, etc.) also exist alongside them
+
+When you identify processed data, bring it up with the user:
+> These .mat files appear to contain data that's been processed — [describe what you see,
+> e.g., "the neural data is organized into trials and stored as float64"]. Do you also have
+> the raw recording files from [recording system]? Those would be ideal for NWB conversion
+> because [brief reason].
+
+If the user confirms raw data is available, pivot to using it. If not, proceed with what's
+available — some NWB is better than no NWB. Document the data provenance in
+`conversion_notes.md` either way.
 
 ### Common Gotchas
 

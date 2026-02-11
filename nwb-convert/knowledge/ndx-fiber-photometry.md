@@ -7,7 +7,7 @@ fiber photometry signals as plain TimeSeries.
 ## Installation
 
 ```bash
-pip install ndx-fiber-photometry
+uv pip install ndx-fiber-photometry
 ```
 
 Dependencies: `pynwb>=3.1.0`, `hdmf>=4.1.0`, `ndx-ophys-devices>=0.3.1`

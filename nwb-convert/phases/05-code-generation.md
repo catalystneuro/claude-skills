@@ -51,7 +51,7 @@ dependencies = ["neuroconv", "nwbinspector"]
 
 [project.optional-dependencies]
 <conversion_name> = [
-    "neuroconv[<extras>]==<pinned_version>",
+    "neuroconv[<extras>]",  # Use latest during development; pin only after finalization
     # Add any additional deps needed for custom interfaces
 ]
 
@@ -168,6 +168,13 @@ class <Name>Interface(BaseDataInterface):
 ```
 
 #### Custom Interface Guidelines
+
+**Prefer raw acquisition data**: Custom interfaces should read data as close to the
+original acquisition format as possible. If you're working with processed data because
+raw files aren't available, document this in the interface docstring (e.g., "Reads
+trialized behavior data from lab-processed .mat files. Raw SpikeGLX files were not
+available."). When raw data IS available, always use the NeuroConv interface for that
+acquisition system rather than writing a custom reader.
 
 **Metadata responsibility**: A custom interface's `get_metadata()` should only return
 metadata that can be extracted FROM THE DATA FILE ITSELF (e.g., session date from filename,
@@ -483,7 +490,9 @@ using [NeuroConv](https://github.com/catalystneuro/neuroconv).
 ## Installation
 
 ```bash
-pip install <lab-name>-lab-to-nwb
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[<conversion_name>]"
 ```
 
 ## Usage

@@ -33,7 +33,7 @@ Before uploading, the user needs:
 1. A DANDI account (on the chosen instance — sandbox and archive have separate accounts)
 2. A DANDI API key (from user profile on the chosen instance)
 3. A Dandiset created on the chosen instance (or you help them create one)
-4. The `dandi` CLI installed (`pip install -U dandi`)
+4. The `dandi` CLI installed (`uv pip install -U dandi`)
 
 ### Step 1: Create a Dandiset
 
