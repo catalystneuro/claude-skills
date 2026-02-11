@@ -13,7 +13,7 @@
 > We're ready to upload your NWB files to DANDI! First, which DANDI instance would you
 > like to use?
 >
-> 1. **DANDI Sandbox** (gui-staging.dandiarchive.org) — for testing. Data can be deleted.
+> 1. **DANDI Sandbox** (sandbox.dandiarchive.org) — for testing. Data can be deleted.
 >    Use this if you want to verify everything works before publishing for real.
 > 2. **DANDI Archive** (dandiarchive.org) — the official public archive. Use this when
 >    you're ready to publish your data permanently.
@@ -21,11 +21,11 @@
 > Which would you prefer?
 
 Set the instance URL based on their choice:
-- **Sandbox**: `DANDI_INSTANCE_URL=https://gui-staging.dandiarchive.org`
-  and `DANDI_API_URL=https://api-staging.dandiarchive.org/api`
+- **Sandbox**: `DANDI_INSTANCE_URL=https://sandbox.dandiarchive.org`
+  and `DANDI_API_URL=https://api.sandbox.dandiarchive.org/api`
 - **Archive**: use the defaults (no env vars needed)
 
-For sandbox uploads, add `-i dandi-staging` to all `dandi` CLI commands.
+For sandbox uploads, add `-i dandi-sandbox` to all `dandi` CLI commands.
 
 ### Prerequisites
 
@@ -150,8 +150,7 @@ for nwb_path in sorted(nwb_dir.rglob("*.nwb")):
 ```
 
 **DANDI sandbox URL**: Always use `https://api.sandbox.dandiarchive.org/api` for the
-sandbox. The older `api-staging.dandiarchive.org` URL redirects and strips auth headers,
-causing 401 errors on write operations.
+sandbox API.
 
 ### Step 6: Verify on DANDI
 
