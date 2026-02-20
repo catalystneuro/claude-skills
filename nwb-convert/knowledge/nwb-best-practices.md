@@ -35,7 +35,7 @@ The conversion agent should follow these when generating code.
 - **`sex`**: one of `"M"`, `"F"`, `"U"` (unknown), `"O"` (other). Single uppercase letter.
 - **`species`**: Latin binomial (e.g., `"Mus musculus"`) or NCBI taxonomy URI (e.g., `"http://purl.obolibrary.org/obo/NCBITaxon_10090"`). Never use common names like "mouse".
 - **`strain`**: the specific strain (e.g., `"C57BL/6J"`). Separate from species.
-- **`age`**: ISO 8601 duration format: `"P90D"` (90 days), `"P12W"` (12 weeks), `"P3M"` (3 months). A reference age can be expressed as a range: `"P90D/P120D"`.
+- **`age`**: ISO 8601 duration format: `"P90D"` (90 days), `"P12W"` (12 weeks), `"P3M"` (3 months). A reference age can be expressed as a range: `"P90D/P120D"`. Use `"/"` when age is unknown.
 - **`date_of_birth`**: preferred over `age` when available (datetime with timezone).
 - **`weight`**: format as `"numeric unit"`, e.g., `"0.025 kg"` or `"25 g"`.
 
