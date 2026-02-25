@@ -82,6 +82,9 @@ $file: ./phases/07-documentation.md
 ### Phase 8: Publishing
 $file: ./phases/08-publishing.md
 
+### Phase 9: Skill Improvement
+$file: ./phases/09-skill-improvement.md
+
 ## Environment
 
 The skill requires:
