@@ -3,8 +3,9 @@ name: nwb-convert
 description: >
   Lead a conversation to convert neurophysiology data to NWB format and publish on DANDI.
   Guides the user (typically a lab experimentalist) through experiment discovery, data inspection,
-  metadata collection, synchronization analysis, code generation, testing, and DANDI upload.
-  Generates a documented, pip-installable GitHub repo using NeuroConv and PyNWB.
+  metadata collection, synchronization analysis, code generation, testing, DANDI upload, and
+  example notebook generation. Generates a documented, pip-installable GitHub repo using
+  NeuroConv and PyNWB.
 user_invocable: true
 argument: Optional path to data directory, Google Drive folder URL, or existing conversion repo
 tools:
@@ -90,6 +91,9 @@ $file: ./phases/06-testing.md
 
 ### Phase 7: DANDI Upload
 $file: ./phases/07-dandi-upload.md
+
+### Phase 8: Example Notebook Generation
+$file: ./phases/08-notebook-generation.md
 
 ## Deployment Modes
 
