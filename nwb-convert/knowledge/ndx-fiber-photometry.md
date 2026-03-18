@@ -341,7 +341,8 @@ FiberPhotometry:
 - Isosbestic control channels (typically 405nm) should be separate rows in the table
   with their own `FiberPhotometryResponseSeries`.
 - The `FiberPhotometry` object is added as `lab_meta_data`, not in a processing module.
-- `FiberPhotometryResponseSeries` can go in `acquisition` (raw) or `processing` (processed).
+- `FiberPhotometryResponseSeries` placement: raw fluorescence data goes in `acquisition`;
+  processed signals (e.g., dF/F) go in `processing/ophys/`).
 - `unit` for fluorescence data is typically `"F"` (arbitrary fluorescence units).
 - **ndx-ophys-devices v0.3.1+ breaking changes**: Many constructor parameters from
   earlier versions were removed or renamed. See the "ndx-ophys-devices v0.3.1+ API"
