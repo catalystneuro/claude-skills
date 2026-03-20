@@ -126,15 +126,27 @@ Ophys:
 ### Reading MATLAB .mat files
 
 ```python
-# For MATLAB v7.3+ (HDF5-based)
-import h5py
-with h5py.File(file_path, "r") as f:
-    data = f["variable_name"][:]
-
-# For older MATLAB files
+# For older MATLAB files (v5/v6)
 from scipy.io import loadmat
 mat = loadmat(file_path)
 data = mat["variable_name"]
+
+# More robust alternative to scipy.io.loadmat (handles more MATLAB types)
+# pip install pymatreader
+from pymatreader import read_mat
+mat = read_mat(file_path)
+data = mat["variable_name"]
+
+# For tabular data where pymatreader fails (newest, most capable)
+# pip install matio
+import matio
+mat = matio.loadmat(file_path)
+data = mat["variable_name"]
+
+# For MATLAB v7.3+ (HDF5-based) — use when the above fail
+import h5py
+with h5py.File(file_path, "r") as f:
+    data = f["variable_name"][:]
 
 # For MATLAB v7.3 with complex nested structures
 import hdf5storage
