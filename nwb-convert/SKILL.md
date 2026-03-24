@@ -89,11 +89,14 @@ $file: ./phases/05-code-generation.md
 ### Phase 6: Testing & Validation
 $file: ./phases/06-testing.md
 
-### Phase 7: DANDI Upload
-$file: ./phases/07-dandi-upload.md
+### Phase 7: Local Example Notebook
+$file: ./phases/07-local-notebook.md
 
-### Phase 8: Example Notebook Generation
-$file: ./phases/08-notebook-generation.md
+### Phase 8: DANDI Upload
+$file: ./phases/08-dandi-upload.md
+
+### Phase 9: Example Notebook Generation
+$file: ./phases/09-notebook-generation.md
 
 ## Deployment Modes
 
