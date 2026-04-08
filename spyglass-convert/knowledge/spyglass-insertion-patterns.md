@@ -5,19 +5,49 @@ Based on the jadhav-lab-to-nwb and kind-lab-to-nwb reference implementations.
 
 ## DataJoint Configuration
 
+> **Critical import order**: `dj.config.load()` MUST be called before importing
+> any Spyglass module. Spyglass executes `dj.schema(...)` at module import time,
+> which immediately tries to connect to MySQL. If config hasn't been loaded yet,
+> DataJoint uses its defaults (`use_tls=True`, wrong host/password) and the
+> connection fails with an SSL handshake error.
+
 ```python
 import datajoint as dj
 
-# Load from file (preferred — keeps credentials out of code)
+# ← STEP 1: load config BEFORE any spyglass import
 dj.config.load("dj_local_conf.json")
 dj.config.save_local()   # writes .datajoint_config.json for session persistence
 
+# ← STEP 2: now it is safe to import spyglass
+import spyglass.common as sgc
+import spyglass.data_import as sgi
+```
+
+The `dj_local_conf.json` for a local Docker container must have:
+
+```json
+{
+  "database.host": "localhost",
+  "database.port": 3306,
+  "database.user": "root",
+  "database.password": "<password from docker-compose.yml>",
+  "database.use_tls": false
+}
+```
+
+**`"database.use_tls": false` is required for local Docker.** If it is `true`
+(the DataJoint default), the SSL handshake fails against the Docker MySQL container.
+
+```python
 # Or set manually (e.g., in a notebook)
 dj.config["database.host"] = "localhost"
 dj.config["database.user"] = "root"
 dj.config["database.password"] = "tutorial"
 dj.config["database.use_tls"] = False
 ```
+
+> **DataJoint version**: Always check the latest version of Spyglass to know which datajoint version is supported.
+> Always verify with `python -c "import datajoint; print(datajoint.__version__)"`.
 
 ## Standard Insertion Call
 
