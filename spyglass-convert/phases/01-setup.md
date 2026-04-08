@@ -25,26 +25,53 @@ conversions and insert sessions.
 
 If the user needs Docker, direct them to https://docs.docker.com/get-docker/.
 
-Start the MySQL container:
+**Use `docker compose`.** Create a `docker-compose.yml` in the conversion repo root.
+On Apple Silicon Macs add `platform: linux/arm64/v8`. Mount a local `./mysql-data`
+directory so the database persists across container restarts.
 
-```bash
-docker run \
-  --name spyglass-db \
-  -v dj-vol:/var/lib/mysql \
-  -p 3306:3306 \
-  -e MYSQL_ROOT_PASSWORD=tutorial \
-  -d datajoint/mysql:8.0
+**Always use the `datajoint/mysql` image** (not plain `mysql`) — it pre-configures
+the auth plugin so PyMySQL can connect without extra flags.
+
+**Before writing the image tag, check which MySQL version the installed DataJoint
+requires (https://hub.docker.com/r/datajoint/mysql/tags).**
+
+```yaml
+# docker-compose.yml  (fill in <mysql-version> after checking above)
+services:
+  db:
+    image: datajoint/mysql:<mysql-version>
+    platform: linux/arm64/v8   # remove this line on Intel Macs / Linux
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=<database-password> # fill in <database-password> from `dj_local_conf.json`
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+    restart: unless-stopped
 ```
 
-Verify it started:
+Start the container:
 ```bash
-docker ps | grep spyglass-db
+docker compose up -d
 ```
 
-If the container already exists from a previous run:
+Verify it is running:
 ```bash
-docker start spyglass-db
+docker compose ps
 ```
+
+To wipe the database and start completely fresh (e.g. re-running setup):
+```bash
+docker compose down
+rm -rf ./mysql-data
+docker compose up -d
+```
+
+If the user already has an existing `docker-compose.yml` in the repo, read it first and adapt 
+rather than creating from scratch.
+Key things to check in existing files:
+- Image tag: verify it matches what the installed DataJoint version supports
+- Volume mount path: use the same path to preserve existing data, or change it for a fresh start
 
 **Ask the user for the connection details** if they are using an existing database
 rather than the Docker container above (host, port, username, password).
@@ -87,8 +114,9 @@ Determine where Spyglass should store its data (raw data, analysis results, etc.
 > Spyglass needs a base directory to store raw data copies and analysis outputs.
 > Where would you like to store Spyglass data? (e.g., `/data/spyglass` or `~/spyglass_data`)
 
-Create `dj_local_conf.json` in the working directory. Use the Docker container
-credentials unless the user has a different setup:
+Create `dj_local_conf.json` in the conversion repo root. Use the credentials from
+`docker-compose.yml`. **Always set `"database.use_tls": false`** for a local Docker
+container — setting it to `true` will cause connection failures.
 
 ```json
 {
@@ -97,13 +125,35 @@ credentials unless the user has a different setup:
   "database.user": "root",
   "database.password": "tutorial",
   "database.use_tls": false,
+  "database.reconnect": true,
+  "loglevel": "INFO",
+  "safemode": true,
+  "fetch_format": "array",
+  "display.limit": 12,
+  "display.show_tuple_count": true,
+  "enable_python_native_blobs": true,
+  "add_hidden_timestamp": false,
+  "filepath_checksum_size_limit": 1073741824,
   "custom": {
-    "spyglass_base_dir": "<user_chosen_path>",
-    "raw_dir": "<user_chosen_path>/raw",
-    "analysis_dir": "<user_chosen_path>/analysis"
+    "debug_mode": "false",
+    "test_mode": "false",
+    "spyglass_dirs": {
+      "base": "<user_chosen_path>",
+      "raw": "<user_chosen_path>/raw",
+      "analysis": "<user_chosen_path>/analysis",
+      "recording": "<user_chosen_path>/recording",
+      "sorting": "<user_chosen_path>/spikesorting",
+      "waveforms": "<user_chosen_path>/waveforms",
+      "temp": "<user_chosen_path>/tmp",
+      "video": "<user_chosen_path>/video",
+      "export": "<user_chosen_path>/export"
+    }
   }
 }
 ```
+
+> **Note:** `dj_local_conf.json` contains credentials — it must be in `.gitignore`.
+> The `docker-compose.yml` (no secrets, just config) can be committed.
 
 Load and save the config (run inside the venv):
 ```python
