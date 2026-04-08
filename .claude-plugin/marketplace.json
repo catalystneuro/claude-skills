@@ -49,6 +49,16 @@
       "skills": [
         "./nwb-convert"
       ]
+    },
+    {
+      "name": "spyglass-convert",
+      "description": "Convert neurophysiology data to Spyglass-compatible NWB format and insert into a Spyglass (DataJoint) database, for ARC conversion projects. Guides through environment setup, Spyglass-compatible NWB conversion, session insertion, table verification, and a tutorial notebook.",
+      "source": "./",
+      "version": "0.1.0",
+      "strict": false,
+      "skills": [
+        "./spyglass-convert"
+      ]
     }
   ]
 }
