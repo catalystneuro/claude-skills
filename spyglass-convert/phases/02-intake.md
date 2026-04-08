@@ -53,6 +53,7 @@ Thumbs.db
 .vscode/
 .idea/
 dj_local_conf.json
+mysql-data/
 EOF
 
 git add .gitignore
