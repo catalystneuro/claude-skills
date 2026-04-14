@@ -13,23 +13,40 @@ ingestion if any are missing.
 
 | Column | Type | Description | Notes |
 |--------|------|-------------|-------|
-| `probe_shank` | int | Shank index (0-indexed) | All 0 for single-shank probes |
-| `probe_electrode` | int | Electrode index within shank | Usually 0..N-1 per shank |
+| `probe_shank` | int or str | Shank identifier | Must match the `Shank.name` in the probe hierarchy — int 0 for single-shank tetrodes; str channel index for multi-shank silicon probes |
+| `probe_electrode` | int | Electrode index within shank | 0..N-1 per shank |
 | `bad_channel` | bool | Whether channel is marked bad | Usually all False |
 | `ref_elect_id` | int | Index of reference electrode | Can be self-referential |
-| `group_name` | str | Parent group name | Must match nTrode{N} convention |
 | `brain_area` | str | Anatomical region | Use "unknown" if not determined |
 
-Add these in the NWBConverter's `add_to_nwbfile()` method AFTER calling
-`super().add_to_nwbfile()` (so the base electrode table exists first).
+**Columns you do NOT need to add explicitly:**
+- `group_name`: NWB auto-populates this from `group=electrode_group` in `add_electrode()`. Do not add it as an extra column — it will cause a duplicate.
+
+**Recommended additional columns** (used by jadhav-lab, improve Spyglass compatibility):
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `hasLFP` | bool | Whether this channel has a corresponding LFP channel. Spyglass's `LFPElectrodeGroup` may use this to identify LFP channels. |
+| `chID` | str | String identifier like `"nTrode1_elec2"`. Used by some Spyglass versions for channel matching. |
+
+Add these via `recording_extractor.set_property()` (for NeuroConv-based conversions)
+or via `nwbfile.add_electrode_column()` + `nwbfile.add_electrode()` (for manual conversions)
+BEFORE writing the NWB file.
 
 ## ElectrodeGroup Naming Convention
 
-Spyglass hardcodes the assumption that ElectrodeGroup names follow the pattern
-`nTrode{N}` (1-indexed). Examples: `nTrode1`, `nTrode2`, ..., `nTrode16`.
+The `nTrode{N}` convention (1-indexed, e.g. `nTrode1`, `nTrode2`, ..., `nTrode16`)
+is the standard Spyglass naming scheme and is required for **SpikeGadgets / tetrode
+recordings** where Spyglass has hardcoded assumptions about this naming pattern.
 
-**If the NeuroConv interface generates different group names** (e.g., "0", "group0",
-"shank0", "tetrode0"), override `get_metadata()` in the converter:
+For **silicon probe / OpenEphys recordings**, brain-area-based names (e.g.
+`"infralimbic_R"`, `"CA1_L"`) have been used successfully in kind-lab. Whether
+`nTrode{N}` is enforced depends on the specific Spyglass code paths your data
+triggers — when in doubt, use `nTrode{N}`.
+
+**For SpikeGadgets recordings:** if the NeuroConv interface generates different
+group names (e.g., `"0"`, `"group0"`, `"shank0"`, `"tetrode0"`), override
+`get_metadata()` in the converter:
 
 ```python
 def get_metadata(self):
@@ -50,18 +67,34 @@ Spyglass expects LFP to be in:
 nwbfile.processing["ecephys"]["LFP"]
 ```
 specifically as an `LFP` container inside an `ecephys` processing module,
-with an `ElectricalSeries` inside it named `LFP` (or similar).
+with an `ElectricalSeries` inside it.
 
-The standard NeuroConv `SpikeGLXLFPInterface` places LFP in `acquisition` by
-default, NOT in `processing["ecephys"]`. You must override this placement in
-the converter:
+**Path A — writing LFP manually (OpenEphys, TDT, custom interfaces):**
+Write directly to `processing["ecephys"]` from the start. No post-processing needed:
+
+```python
+from pynwb.ecephys import ElectricalSeries, LFP
+
+lfp_electrical_series = ElectricalSeries(
+    name="lfp_series",
+    data=lfp_traces,
+    electrodes=lfp_electrodes,
+    rate=rate,
+    starting_time=starting_time,
+)
+lfp = LFP(electrical_series=lfp_electrical_series)
+ecephys_module = nwbfile.create_processing_module(name="ecephys", description="ecephys module")
+ecephys_module.add(lfp)
+```
+
+**Path B — using `SpikeGLXLFPInterface` (Neuropixels):**
+`SpikeGLXLFPInterface` places LFP in `acquisition` by default. Move it after
+calling `super().add_to_nwbfile()`:
 
 ```python
 def add_to_nwbfile(self, nwbfile, metadata, **kwargs):
-    # Run all interfaces normally
     super().add_to_nwbfile(nwbfile, metadata, **kwargs)
 
-    # Move LFP from acquisition to processing["ecephys"]["LFP"]
     from pynwb.ecephys import LFP
     from neuroconv.tools.nwb_helpers import get_module
 
@@ -72,25 +105,79 @@ def add_to_nwbfile(self, nwbfile, metadata, **kwargs):
         ecephys_module.add(lfp_container)
 ```
 
-Alternatively, configure the LFP interface to write to processing directly by
-checking if `SpikeGLXLFPInterface` supports a `write_as` parameter.
+Alternatively, check if `SpikeGLXLFPInterface` supports a `write_as` parameter
+to write to processing directly.
 
 ## Video Requirements
 
-Spyglass requires TWO things beyond a bare `ImageSeries`:
+Spyglass requires THREE things beyond a bare `ImageSeries`:
 
 1. **`CameraDevice` from `ndx_franklab_novela`** (not a plain `Device`). Spyglass
-   reads the `ndx_franklab_novela.CameraDevice` to populate its `CameraDevice` table.
+   reads this to populate its `CameraDevice` table.
 
-2. **A `"tasks"` processing module with a `task_table` `DynamicTable`** — Spyglass
-   populates `Task` and `TaskEpoch` tables from this. It must always exist, even when
-   the session has no distinct behavioral epochs (create one row covering the whole session).
+2. **`ImageSeries` with `device=camera_device`** — explicitly link the `ImageSeries`
+   to the `CameraDevice`. Without this, Spyglass cannot map video files to cameras.
+
+3. **A `"tasks"` processing module with a `task_table` `DynamicTable`** — Spyglass
+   populates `Task` and `TaskEpoch` from this. Must always exist, even when the
+   session has no distinct behavioral epochs (create one row covering the whole session).
 
 **Do NOT use `VideoInterface` from NeuroConv** — it does not create these required objects.
 
 Use `utils/add_behavioral_video.py` (see Phase 6) which handles all of this.
-The `task_table` must have columns: `task_name`, `task_description`, `camera_id`,
-`task_epochs`.
+
+**`task_table` required columns:** `task_name`, `task_description`, `camera_id`, `task_epochs`
+
+```python
+from pynwb.core import DynamicTable
+from ndx_franklab_novela import CameraDevice
+from pynwb.image import ImageSeries
+
+camera_device = CameraDevice(
+    name="camera_device 0",
+    meters_per_pixel=0.001,
+    model="Mako G-158C",
+    lens="Theia SL183M",
+    camera_name="SleepBox",
+    # manufacturer is optional in the ndx extension
+)
+nwbfile.add_device(camera_device)
+
+tasks_module = nwbfile.create_processing_module(name="tasks", description="tasks module")
+task_table = DynamicTable(name="task_table", description="task metadata for Spyglass")
+task_table.add_column(name="task_name",        description="Name of the task.")
+task_table.add_column(name="task_description", description="Description of the task.")
+task_table.add_column(name="camera_id",        description="Camera ID(s).")
+task_table.add_column(name="task_epochs",      description="Epoch numbers for this task.")
+task_table.add_row(
+    task_name="Sleep",
+    task_description="...",
+    camera_id=[0],
+    task_epochs=[1, 2],
+)
+tasks_module.add(task_table)
+
+image_series = ImageSeries(
+    name="Video_epoch1",
+    description="Behavioral video.",
+    unit="n.a.",
+    external_file=["/path/to/video.mp4"],
+    format="external",
+    timestamps=timestamps,
+    device=camera_device,   # ← required link to CameraDevice
+)
+nwbfile.add_acquisition(image_series)
+```
+
+> **`camera_id` for sessions without video**: Use `np.array([], dtype=np.int32)` (not
+> an empty Python list `[]`). Spyglass checks `if len(camera_ids) > 0:`, which works
+> on numpy arrays but `if camera_ids:` raises `ValueError` on a numpy empty array.
+
+> **`CameraDevice` in NWB file devices**: Spyglass's `TaskEpoch.make()` looks for
+> `CameraDevice` objects in `nwbfile.devices` to map `camera_id` → `camera_name`.
+> If CameraDevice is only pre-seeded in the DataJoint DB (not in the NWB file),
+> TaskEpoch will warn "No camera device found" and set `camera_names=[]`.
+> For full VideoFile population, you must include the `CameraDevice` in the NWB file.
 
 ## DataAcquisitionDevice
 
@@ -137,15 +224,70 @@ location, as this may vary between Spyglass versions.
 
 ## Epochs / Task Structure
 
-Spyglass populates `Task` and `TaskEpoch` tables from `TimeIntervals` in the
-NWB file. Standard approach:
+Spyglass populates `Task` and `TaskEpoch` from NWB epochs. Use
+`nwbfile.add_epoch()` with `tags` set to a zero-padded epoch number string:
 
 ```python
-nwbfile.add_epoch(start_time=0.0, stop_time=600.0, tags=["sleep"])
-nwbfile.add_epoch(start_time=600.0, stop_time=1800.0, tags=["run"])
+nwbfile.add_epoch(start_time=0.0,   stop_time=600.0,  tags=["01"])   # epoch 1
+nwbfile.add_epoch(start_time=600.0, stop_time=1800.0, tags=["02"])   # epoch 2
 ```
 
-Or use `nwbfile.add_trial()` for trial-based data.
+**The `tags` value becomes `interval_list_name` in `TaskEpoch`.** Both
+jadhav-lab and kind-lab use this zero-padded string format (e.g. `"01"`, `"02"`).
+Spyglass uses this to match epochs to the `task_epochs` list in `task_table`.
+
+The `task_epochs` column in `task_table` should contain the corresponding integer
+epoch numbers (e.g. `[1, 2]` for epochs tagged `"01"` and `"02"`).
+
+## Probe Hierarchy and FK Constraints
+
+Spyglass's `common_ephys._electrode` table has a FK constraint to
+`common_device.probe__electrode` via `(probe_id, probe_shank, probe_electrode)`.
+The Probe hierarchy in the NWB file must match the Electrode table values exactly.
+The key rule: **`probe_shank` in the Electrode table must match `Shank.name` in the Probe hierarchy.**
+
+### Pattern A: Tetrode arrays (SpikeGadgets / jadhav-lab pattern)
+
+One physical probe, one shank (4 contacts). All electrodes get `probe_shank=0`.
+
+```python
+# Electrode table: probe_shank=0, probe_electrode=0..3 for ALL tetrodes
+shanks_electrodes = [
+    ShanksElectrode(name=str(ch), rel_x=0.0, rel_y=0.0, rel_z=0.0)
+    for ch in range(4)
+]
+shanks = [Shank(name="0", shanks_electrodes=shanks_electrodes)]
+probe = Probe(name="tetrode_array", shanks=shanks, ...)
+
+# WRONG: one Shank per tetrode — probe_shank would need to be tetrode index, not 0
+# shanks = [Shank(name=str(trode_id), ...) for trode_id in unique_trodes]
+```
+
+The Probe hierarchy describes PHYSICAL hardware geometry.
+For a tetrode array, one physical probe has one shank with 4 contacts.
+`ElectrodeGroup` (one per tetrode) describes which tetrode is recording — NOT
+the same as a Shank.
+
+### Pattern B: Multi-site silicon probes (OpenEphys / kind-lab pattern)
+
+One probe, one Shank per electrode channel. `probe_shank` = channel index as string.
+
+```python
+for ch in range(n_channels):
+    electrode = ShanksElectrode(name=str(ch), rel_x=0.0, rel_y=0.0, rel_z=0.0)
+    shank = Shank(name=str(ch), shanks_electrodes=[electrode])
+    probe.add_shank(shank)
+
+nwbfile.add_electrode(
+    ...
+    probe_shank=str(ch),   # matches Shank.name above
+    probe_electrode=ch,    # electrode index within shank (only one per shank here)
+)
+```
+
+**Never use `float("nan")` for `contact_size`**: DataJoint translates `nan` to the
+literal SQL identifier `nan` in WHERE clauses, producing
+`UnknownAttributeError: Unknown column 'nan'`. Use `None` instead.
 
 ## ndx_franklab_novela Dependency
 
@@ -163,6 +305,13 @@ uv pip install ndx-franklab-novela
 | `Shank` | Shank within a probe |
 | `ShanksElectrode` | Individual electrode on a shank |
 | `NwbElectrodeGroup` | Electrode group with stereotaxic targeting info (replaces plain `ElectrodeGroup`) |
+
+**`CameraDevice` field notes:**
+- Required: `name`, `meters_per_pixel`, `model`, `lens`, `camera_name`
+- `manufacturer` is optional in the ndx extension
+- `name` must be formatted as `"camera_device {id}"` (e.g., `"camera_device 0"`) for Spyglass to populate the VideoFile table correctly
+
+**`NwbElectrodeGroup` is required**, not optional. Using a plain `pynwb.device.ElectrodeGroup` will cause insertion to fail because Spyglass reads the ndx-specific fields (e.g., `targeted_location`, stereotaxic coordinates) from it.
 
 ## Known Incompatible NeuroConv Interfaces
 
