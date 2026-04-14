@@ -87,26 +87,12 @@ ecephys_module = nwbfile.create_processing_module(name="ecephys", description="e
 ecephys_module.add(lfp)
 ```
 
-**Path B — using `SpikeGLXLFPInterface` (Neuropixels):**
-`SpikeGLXLFPInterface` places LFP in `acquisition` by default. Move it after
-calling `super().add_to_nwbfile()`:
-
-```python
-def add_to_nwbfile(self, nwbfile, metadata, **kwargs):
-    super().add_to_nwbfile(nwbfile, metadata, **kwargs)
-
-    from pynwb.ecephys import LFP
-    from neuroconv.tools.nwb_helpers import get_module
-
-    if "LFP" in nwbfile.acquisition:
-        lfp_series = nwbfile.acquisition.pop("LFP")
-        ecephys_module = get_module(nwbfile, "ecephys", "Processed ecephys data")
-        lfp_container = LFP(name="LFP", electrical_series=lfp_series)
-        ecephys_module.add(lfp_container)
-```
-
-Alternatively, check if `SpikeGLXLFPInterface` supports a `write_as` parameter
-to write to processing directly.
+**Path B — using a NeuroConv LFP interface (SpikeGLX, OpenEphys, Intan, etc.):**
+Any NeuroConv interface that inherits from `BaseLFPExtractorInterface` — including
+`SpikeGLXLFPInterface`, `OpenEphysLFPInterface`, `IntanLFPInterface`, and others —
+defaults to `write_as="lfp"`. This already writes to `processing["ecephys"]["LFP"]` — no
+post-processing or "move" step is needed. All such interfaces are Spyglass-compatible
+on LFP placement out of the box.
 
 ## Video Requirements
 
@@ -313,12 +299,39 @@ uv pip install ndx-franklab-novela
 
 **`NwbElectrodeGroup` is required**, not optional. Using a plain `pynwb.device.ElectrodeGroup` will cause insertion to fail because Spyglass reads the ndx-specific fields (e.g., `targeted_location`, stereotaxic coordinates) from it.
 
+## Pose Estimation (ndx-pose)
+
+Spyglass has an `ImportedPose` table (`spyglass.position.v1.imported_pose`) that
+reads `ndx_pose.PoseEstimation` objects directly from `nwb.processing["behavior"]`.
+**ndx-pose format is Spyglass-compatible** — no structural changes to the NWB file
+are needed beyond what the NeuroConv DLC/SLEAP interfaces already produce.
+
+**Key facts:**
+- `ImportedPose` iterates `nwb.processing["behavior"]` and finds objects that are
+  `isinstance(obj, ndx_pose.PoseEstimation)` — so any `PoseEstimation` container
+  placed in the behavior processing module will be found.
+- Insertion is a **separate step** from `insert_sessions()`, analogous to `insert_lfp()`.
+  Call `ImportedPose.make(key)` after the session is inserted.
+- Spyglass's `common_position.py` (LED-based tracking) does NOT read ndx-pose data —
+  it reads `SpatialSeries` from `processing["behavior"]["Position"]`. These are two
+  separate position tracking paths in Spyglass.
+
+```python
+from spyglass.position.v1 import ImportedPose
+
+nwb_copy_file_name = get_nwb_copy_filename(nwbfile_path.name)
+ImportedPose.make({"nwb_file_name": nwb_copy_file_name})
+```
+
+**NeuroConv DLC/SLEAP interfaces** (`DeepLabCutInterface`, `SLEAPInterface`,
+`LightningPoseInterface`) all write ndx-pose format to `processing["behavior"]` by
+default — they are Spyglass-compatible on pose placement out of the box.
+
 ## Known Incompatible NeuroConv Interfaces
 
 | Interface | Issue | Workaround |
 |-----------|-------|------------|
 | `VideoInterface` | Does not create `CameraDevice` or `task_table` | Use `utils/add_behavioral_video.py` |
-| `SpikeGLXLFPInterface` (default) | Places LFP in `acquisition`, not `processing["ecephys"]` | Call `move_lfp_to_ecephys_processing()` from `utils/add_ecephys.py` |
 
 Always test interface output against Spyglass with a stub file before committing
 to a final conversion approach.
