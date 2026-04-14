@@ -56,40 +56,70 @@ import spyglass.data_import as sgi
 
 sgi.insert_sessions(
     str(nwb_file_path),
-    rollback_on_fail=True,   # atomic: rolls back all tables if any fails
+    rollback_on_fail=True,   # soft-rollback: deletes Session on InsertError
     raise_err=True,          # surface the actual error (not just a generic failure)
 )
 ```
 
-`rollback_on_fail=True` is critical for debugging — without it, a partial
-insertion leaves the database in an inconsistent state that requires manual cleanup.
+**Recommended pattern**: always use `clean_existing=True` when re-inserting, and verify
+Session exists after `insert_sessions()` returns:
+
+```python
+from spyglass.common import Nwbfile
+from spyglass.utils.nwb_helper_fn import get_nwb_copy_filename
+
+def insert_session(nwbfile_path, clean_existing=False):
+    copy_name = get_nwb_copy_filename(Path(nwbfile_path).name)
+    nwb_dict = {"nwb_file_name": copy_name}
+
+    if clean_existing:
+        nwb_entry = Nwbfile() & nwb_dict
+        if nwb_entry:
+            nwb_entry.delete(safemode=False)  # ← safemode=False required to skip the interactive confirmation prompt
+
+    sgi.insert_sessions(str(nwbfile_path), rollback_on_fail=True, raise_err=True)
+
+    # Verify Session was actually populated (silent skip would leave Session empty)
+    if not (sgc.Session() & nwb_dict):
+        raise RuntimeError(
+            f"Session was not populated for {copy_name}. "
+            "Nwbfile entry may exist from a previous failed run. "
+            "Try clean_existing=True."
+        )
+```
 
 ## Idempotent Re-runs with clean_db_entry()
 
 When a session needs to be re-inserted (e.g., after fixing an NWB file), entries
-from the previous failed run must be removed first. Delete in reverse dependency
-order so foreign key constraints are not violated:
+from the previous failed run must be removed first.
+
+**Preferred approach**: delete Nwbfile via DataJoint — it cascades to Session and all
+its descendants (ElectrodeGroup, Electrode, TaskEpoch, VideoFile, etc.) at the Python
+level. Always use `safemode=False` to skip the interactive confirmation prompt:
 
 ```python
 def clean_db_entry(nwb_file_name: str):
-    restriction = {"nwb_file_name": nwb_file_name}
-    copy_restriction = {"nwb_file_name": get_nwb_copy_filename(nwb_file_name)}
-
-    # Delete from leaf tables to root tables
-    tables_in_order = [
-        sgc.LFPOutput, sgc.ImportedLFP, sgc.LFPElectrodeGroup,
-        sgc.Raw, sgc.SensorData, sgc.Electrode, sgc.ElectrodeGroup,
-        sgc.Probe, sgc.DataAcquisitionDevice, sgc.VideoFile,
-        sgc.DIOEvents, sgc.TaskEpoch, sgc.IntervalList, sgc.Task,
-        sgc.Session, sgc.Nwbfile,
-    ]
-    for table in tables_in_order:
-        try:
-            (table & restriction).delete(safemode=False)
-            (table & copy_restriction).delete(safemode=False)
-        except Exception:
-            pass
+    copy_name = get_nwb_copy_filename(nwb_file_name)
+    entry = sgc.Nwbfile() & {"nwb_file_name": copy_name}
+    if entry:
+        entry.delete(safemode=False)  # cascades to Session and descendants
+    # Also delete the _.nwb copy file from disk so it gets re-created
+    from spyglass.settings import raw_dir
+    copy_path = Path(raw_dir) / copy_name
+    if copy_path.exists():
+        copy_path.unlink()
 ```
+
+**Note on the `_.nwb` copy file**: Spyglass creates a copy of the NWB file at
+`raw_dir/{stem}_.nwb` when inserting. If this copy was deleted outside of DataJoint
+(raw filesystem), AND the Nwbfile DB entry was left in place, subsequent calls to
+`insert_sessions()` will silently skip (Nwbfile entry exists → warns + continues)
+without re-creating the copy. Always delete both the DB entry AND the copy file, or
+use `clean_existing=True` which handles this.
+
+**Avoid raw MySQL deletes**: never use `DELETE FROM` or `TRUNCATE TABLE` to clean
+Spyglass tables. It bypasses FK constraints, leaves orphaned rows, and corrupts the
+external store tracking (`~external_raw` table).
 
 ## get_nwb_copy_filename()
 
@@ -194,8 +224,10 @@ https://lorenfranklab.github.io/spyglass/latest/notebooks/02_Data_Views/
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `DataJointError: Duplicate entry` | Session already (partially) inserted | Run `clean_db_entry()` first |
+| `DataJointError: Duplicate entry` | Session already (partially) inserted, or orphaned row from previous raw SQL delete | Run `clean_db_entry()` first; also check for orphaned rows in child tables |
 | `DataJointError: Connection refused` | Database not running | Start Docker container |
 | `DataJointError: Access denied` | Wrong credentials | Check `dj_local_conf.json` |
 | `KeyError` during insertion | Missing NWB data Spyglass expected | Check NWB file structure vs `knowledge/spyglass-nwb-requirements.md` |
 | `IntegrityError: foreign key constraint` | Deleting parent before child | Use `clean_db_entry()` which deletes in correct order |
+| `FileNotFoundError: NWB file not found in kachery or Dandi` | `get_nwb_file()` called with path to non-existent `_.nwb` copy | Delete stale Nwbfile entry AND copy file, then re-insert; OR pass absolute path to existing copy |
+| Session=0 after `insert_sessions()` returns normally | Nwbfile entry existed from previous partial run → `insert_sessions()` silently skipped | Use `clean_existing=True` (delete Nwbfile entry before inserting); verify Session after call |
