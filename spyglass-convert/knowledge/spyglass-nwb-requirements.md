@@ -5,6 +5,26 @@ satisfy for successful ingestion into a Spyglass database. These requirements
 are beyond standard NWB validity — a file can pass NWB Inspector and still fail
 Spyglass insertion if these are missing.
 
+## Raw ElectricalSeries
+
+All raw electrophysiology must be written as a single `ElectricalSeries` added to
+`nwbfile.acquisition`. The `ElectricalSeries` must be named exactly `e-series`
+(lowercase, with a hyphen). Spyglass relies on this exact name to locate the raw
+data object during ingestion.
+
+```python
+from pynwb.ecephys import ElectricalSeries
+
+electrical_series = ElectricalSeries(
+    name="e-series",
+    data=raw_traces,
+    electrodes=electrode_table_region,
+    rate=rate,
+    starting_time=starting_time,
+)
+nwbfile.add_acquisition(electrical_series)
+```
+
 ## Required Electrode Table Columns
 
 The `electrodes` table in the NWB file MUST contain these extra columns in
@@ -16,7 +36,7 @@ ingestion if any are missing.
 | `probe_shank` | int or str | Shank identifier | Must match the `Shank.name` in the probe hierarchy — int 0 for single-shank tetrodes; str channel index for multi-shank silicon probes |
 | `probe_electrode` | int | Electrode index within shank | 0..N-1 per shank |
 | `bad_channel` | bool | Whether channel is marked bad | Usually all False |
-| `ref_elect_id` | int | Index of reference electrode | Can be self-referential |
+| `ref_elect_id` | int | Index of reference electrode | Can be self-referential. Must always be an integer, even when no electrode served as the original reference — use `-1` as the sentinel value in that case. `None` or missing values will fail Spyglass ingestion. |
 | `brain_area` | str | Anatomical region | Use "unknown" if not determined |
 
 **Columns you do NOT need to add explicitly:**
