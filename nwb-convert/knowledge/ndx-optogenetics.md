@@ -194,6 +194,8 @@ nwbfile.add_time_intervals(opto_pulses_table)
 - `power_in_mW` in the epoch/pulse tables is the per-stimulation power; `power_in_W` on the `ExcitationSource` device is the hardware spec.
 - Brain region names in `fiber_insertion` and `virus_injection` should use standard atlas nomenclature (Allen Brain Atlas for mice).
 - Both `OptogeneticEpochsTable` and `OptogeneticPulsesTable` can be added to the same NWB file if both epoch-level summaries and pulse-level timing are available.
+- Include always all device/device model attributes (even the optional ones). If the actual value is not available, comment it out in the generated metadata YAML file, and add an in-line comment with the description of the attribute.
+
 
 ## Metadata YAML Template
 
@@ -205,7 +207,7 @@ Optogenetics:
       manufacturer: Omicron
       source_type: laser                  # laser | LED
       excitation_mode: one-photon         # one-photon | two-photon
-      wavelength_range_in_nm: [488.0, 488.0]  # [min, max]; same value for single-wavelength
+      wavelength_range_in_nm: [438.0, 538.0]  # [min, max]; search ranger values in the datasheet if not provided
 
   ExcitationSource:
     - name: laser
