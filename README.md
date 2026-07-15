@@ -20,7 +20,6 @@ Then install individual skills:
 ```
 /plugin install analyzing-dandi-datasets@catalystneuro-skills
 /plugin install using-nemos@catalystneuro-skills
-/plugin install using-pynapple@catalystneuro-skills
 /plugin install nwb-convert@catalystneuro-skills
 ```
 
@@ -104,26 +103,15 @@ Fit Generalized Linear Models (GLMs) to neuroscience data using the [NeMoS](http
 
 ### using-pynapple
 
-Analyze neurophysiology time series using the [pynapple](https://pynapple.org/) Python package. Covers:
-
-- Core data structures (Ts, Tsd, TsdFrame, TsdTensor, TsGroup, IntervalSet)
-- Time series manipulation (restrict, count, smooth, interpolate, bin_average, derivative)
-- Metadata management and neuron filtering
-- Tuning curves (1D, 2D, n-dimensional)
-- Bayesian and template decoding
-- Signal processing (filtering, wavelets, Hilbert phase extraction)
-- Correlograms and perievent analysis
+**Moved.** The `using-pynapple` skill now lives in [pynapple-org/claude-skills](https://github.com/pynapple-org/claude-skills) and is maintained there. It is no longer distributed from this repository.
 
 ## Usage
 
 After installing a skill, Claude Code will automatically use it when relevant. You can also invoke skills directly with their slash command:
 
 - `/nwb-convert` - Start an NWB conversion workflow
-- *"Load this NWB file and compute head direction tuning curves"* - triggers `using-pynapple`
 - *"Fit a Poisson GLM with spike history basis"* - triggers `using-nemos`
 - *"Find a DANDI dataset with hippocampal place cells"* - triggers `analyzing-dandi-datasets`
-
-The `using-nemos` and `using-pynapple` skills cross-reference each other since NeMoS workflows typically use pynapple for data preparation.
 
 ## Skill Architecture
 
