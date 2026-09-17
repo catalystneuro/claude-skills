@@ -2,11 +2,10 @@
 
 ## Before publishing a dataset for a new format
 
-If the files were stubbed, check that each is a proper stub: it preserves its
-claimed coverage axes, remains internally consistent, and opens with readers
-that make reasonable assumptions about the format. If you are building a
-reader or tool, test the prototype against every proposed example and check
-that it handles each claimed axis of variation.
+If any files were stubbed, check them again against the proper-stub requirements
+in `references/stubbing.md`. If you are building a reader or tool, test the
+prototype against every proposed example and check that it handles each claimed
+axis of variation.
 
 Review the final set for examples that add no distinct structural or
 reader-relevant variation. Then run a best-of-five design pass: propose five
@@ -22,10 +21,6 @@ until the user chooses.
 Before modifying a repository clone, check its top-level `README.md` for
 repository-specific contribution and pull-request conventions. Use this
 reference for the annex and upload mechanics.
-
-Ask the user before anything that writes to the remote: `gin upload`,
-`git push`, or opening a pull request. For a new format dataset, ask after the
-final coverage review above.
 
 ## Prerequisite: an SSH key registered with gin
 

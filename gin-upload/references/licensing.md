@@ -1,7 +1,9 @@
 # Licensing
 
-The license decides what may be published, not what may be downloaded or tested
-against, so this is the gate right before the upload.
+Record the license and access terms during discovery. A candidate that cannot
+be redistributed may still inform the format analysis or be tested locally
+when permitted, but it must not be published until redistribution rights and
+required notices are clear.
 
 All three repositories use the same two-part license, stated in their READMEs:
 

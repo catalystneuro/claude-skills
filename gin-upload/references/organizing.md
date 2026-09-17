@@ -12,15 +12,15 @@ established there. For a new folder, use this structure:
     [<format_type>/]                     csv | excel | json, when the system writes several file types
       [<version>/]                       e.g. version_7_0 | legacy, when the format is versioned
         <condition>/                     an important axis of variation of the format
-          <dataset_folder>/                     the specific dataset, named by what it adds
+          <dataset_folder>/              the specific dataset, named by what it adds
             files
 ```
 
 The top folder is the acquisition system or algorithm, not the file format,
 because one system can write the same data as, for example, CSV and a binary
 file. An open standard written by many systems (EDF) is its own top folder. A
-system that writes more than one modality can use the level below it for that if the
-modality is not segregated at the top like in the ophys.
+system that writes more than one modality can use the level below it for that,
+when the modality is not separated at the top level as in the ophys repository.
 
 A condition is a variation in the acquisition system's output that changes how
 a reader handles the format. Source, lab, or experiment names and catch-all

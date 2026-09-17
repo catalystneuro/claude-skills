@@ -20,17 +20,20 @@ which this skill aims to address.
 ## Workflows
 
 **Create a dataset for a new format.** Start with `references/finding_data.md`
-and collect several examples. Then move iteratively between stubbing, testing a
-reader or tool, and organizing the coverage axes. Check licenses as candidates
-become viable. Before publishing, run the final coverage review in
+and collect several examples, at least three that differ from one another.
+Then move iteratively between stubbing, testing a reader or tool, and
+organizing the coverage axes, until every identified axis has an example and
+another search and testing pass reveals no materially new variation. Check
+licenses as candidates become viable. Before publishing, run the final coverage review in
 `references/uploading.md` and show its recommendation to the user.
 
 **Add an example to an existing format.** Start with
 `references/organizing.md` to understand the existing structure and the
 variation the new example represents. Then check `references/licensing.md`,
 read `references/stubbing.md` if the file must be reduced or synthesized, and
-finish with the upload mechanics in `references/uploading.md`. Searching for
-more data and reconsidering the complete coverage model are not required.
+finish with the upload mechanics in `references/uploading.md`. Name what the
+new example adds to the existing coverage. Searching for more data and
+reconsidering the complete coverage model are not required.
 
 ## References
 
@@ -42,6 +45,8 @@ more data and reconsidering the complete coverage model are not required.
 
 Read each relevant reference from start to finish.
 
+Ask the user before `gin upload`, `git push`, or opening a pull request.
+o this.
 ## Repositories
 
 | Repository | URL | Used by |

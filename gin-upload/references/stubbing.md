@@ -27,6 +27,10 @@ the data depends on another, such as a synchronization table that maps samples
 to video frames, or event times that index into the signal, modify them
 together.
 
+A proper stub preserves the coverage axes that justify the example, remains
+internally consistent, and opens with readers that make reasonable assumptions
+about the format.
+
 ## Human data
 
 For human subject data, default to creating synthetic copies. Use an original
