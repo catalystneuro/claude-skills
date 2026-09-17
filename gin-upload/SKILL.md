@@ -46,7 +46,7 @@ reconsidering the complete coverage model are not required.
 Read each relevant reference from start to finish.
 
 Ask the user before `gin upload`, `git push`, or opening a pull request.
-o this.
+
 ## Repositories
 
 | Repository | URL | Used by |
