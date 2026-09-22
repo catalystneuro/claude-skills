@@ -20,6 +20,7 @@ Then install individual skills:
 ```
 /plugin install analyzing-dandi-datasets@catalystneuro-skills
 /plugin install using-nemos@catalystneuro-skills
+/plugin install using-pynapple@catalystneuro-skills
 /plugin install nwb-convert@catalystneuro-skills
 ```
 
@@ -103,7 +104,18 @@ Fit Generalized Linear Models (GLMs) to neuroscience data using the [NeMoS](http
 
 ### using-pynapple
 
-**Moved.** The `using-pynapple` skill now lives in [pynapple-org/claude-skills](https://github.com/pynapple-org/claude-skills) and is maintained there. It is no longer distributed from this repository.
+**Maintained by [pynapple-org](https://github.com/pynapple-org/claude-skills).** The `using-pynapple` skill has moved to [pynapple-org/claude-skills](https://github.com/pynapple-org/claude-skills), where the pynapple maintainers develop it. This marketplace still lists it, installing it straight from that repository:
+
+```
+/plugin install using-pynapple@catalystneuro-skills
+```
+
+Installing it from the pynapple marketplace directly works too, and gets you the same skill:
+
+```
+/plugin marketplace add pynapple-org/claude-skills
+/plugin install using-pynapple@pynapple-skills
+```
 
 ## Usage
 

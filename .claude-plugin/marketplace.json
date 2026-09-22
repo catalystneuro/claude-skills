@@ -31,6 +31,14 @@
       ]
     },
     {
+      "name": "using-pynapple",
+      "description": "Analyze neurophysiology time series using the pynapple Python package. Covers core data structures, time series manipulation, metadata filtering, tuning curves, decoding, and signal processing. Maintained by pynapple-org.",
+      "source": {
+        "source": "github",
+        "repo": "pynapple-org/claude-skills"
+      }
+    },
+    {
       "name": "nwb-convert",
       "description": "Convert neurophysiology data to NWB format and publish on DANDI. Guides through experiment discovery, data inspection, metadata collection, synchronization, code generation, testing, and upload. Generates a pip-installable conversion repo using NeuroConv and PyNWB.",
       "source": "./",
