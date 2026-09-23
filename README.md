@@ -21,6 +21,7 @@ Then install individual skills:
 /plugin install analyzing-dandi-datasets@catalystneuro-skills
 /plugin install using-nemos@catalystneuro-skills
 /plugin install nwb-convert@catalystneuro-skills
+/plugin install gin-upload@catalystneuro-skills
 ```
 
 ### Manual Installation (Alternative)
@@ -100,6 +101,17 @@ Fit Generalized Linear Models (GLMs) to neuroscience data using the [NeMoS](http
 - Functional connectivity and coupling filter analysis
 - Cross-validation and model selection with scikit-learn
 - Calcium imaging with Gaussian GLMs
+
+### gin-upload
+
+Add test data to the [gin](https://gin.g-node.org/) git-annex repositories used by NeuroConv and python-neo (`behavior_testing_data`, `ophys_testing_data`, `ephy_testing_data`). These repositories are usually short of examples, so software built against them overfits to the few files that are there. The skill covers:
+
+- Finding more example files for a format, and recording their provenance
+- Stubbing a recording down while keeping it internally consistent, and generating synthetic files
+- Human subject data
+- Licensing: what may be published, and which licenses must travel with the files
+- Where data goes, how folders and files are named, and how the README describes them
+- Uploading: annexing and locking every file, pushing content before the branch, and fixing files committed as plain git blobs
 
 ### using-pynapple
 

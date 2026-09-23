@@ -49,6 +49,16 @@
       "skills": [
         "./spyglass-convert"
       ]
+    },
+    {
+      "name": "gin-upload",
+      "description": "Add test data to the CatalystNeuro and NeuralEnsemble gin git-annex repositories: finding example files that cover how a format varies, stubbing them down, human subject data, licensing, how folders and READMEs are organized, and the upload itself, including annexing and locking every file and pushing content before the branch.",
+      "source": "./",
+      "version": "0.1.0",
+      "strict": false,
+      "skills": [
+        "./gin-upload"
+      ]
     }
   ]
 }
