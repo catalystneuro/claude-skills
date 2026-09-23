@@ -17,6 +17,9 @@ To go beyond the data you already have, look for more examples in:
   re3data.org for domain-specific archives.
 - Paper supplementary materials, and the vendor's own forum or knowledge base.
 
+Skip DANDI: it stores only NWB, so a recording in a vendor format has already
+been converted by the time it lands there.
+
 When searching, fan the search out to parallel subagents if your environment
 supports it, one per source. For every candidate, record where it is, its
 source (DOI or commit), its size and, critically, its license as stated where
