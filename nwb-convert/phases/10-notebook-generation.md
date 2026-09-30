@@ -1,10 +1,11 @@
-## Phase 8: Example Notebook Generation
+## Phase 10: Example Notebook Generation
 
 **Goal**: Create an educational Jupyter notebook that demonstrates how to stream, read,
 and visualize the published NWB data from DANDI. The notebook serves as a companion to
 the Dandiset — helping new users (and reviewers) explore the data independently.
 
-**Entry**: Data has been uploaded to DANDI (Phase 7 complete). The Dandiset ID and asset
+**Entry**: Data has been uploaded to DANDI (Phase 8 complete) and the Dandiset metadata
+is filled in (Phase 9). The Dandiset ID and asset
 paths are known.
 
 **Exit criteria**: A tested `.ipynb` notebook that runs end-to-end using only streaming
@@ -367,3 +368,7 @@ Inform the user:
 >
 > The notebook demonstrates:
 > [list what the notebook covers]
+
+Once the PR is merged, add the notebook to the Dandiset's related resources with the
+`dandiset-metadata` skill (see Phase 9): the notebook's GitHub URL, relation
+`dcite:IsSupplementedBy`, resource type `dcite:ComputationalNotebook`.
