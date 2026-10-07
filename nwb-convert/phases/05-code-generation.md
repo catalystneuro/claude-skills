@@ -224,11 +224,11 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 | Reward events | `TimeSeries` or `LabeledEvents` | `processing["behavior"]` |
 | Animal video | `ImageSeries` (external_file) | `nwbfile.add_acquisition()` |
 | Compass direction | `CompassDirection` > `SpatialSeries` | `processing["behavior"]` |
-| Optogenetic stimulus | `OptogeneticSeries` | `nwbfile.add_stimulus()` |
+| Optogenetic stimulus | ndx-optogenetics `OptogeneticEpochsTable` or `OptogeneticPulsesTable` | `nwbfile.add_time_intervals()` |
 
 **For detailed PyNWB construction patterns by domain, see:**
 - `knowledge/pynwb-icephys.md` — intracellular electrophysiology
-- `knowledge/pynwb-optogenetics.md` — optogenetic stimulation
+- `knowledge/ndx-optogenetics.md` — ndx-optogenetics extension (REQUIRED for optogenetics)
 - `knowledge/pynwb-ophys-advanced.md` — advanced optical physiology (ROIs, segmentation, motion correction)
 - `knowledge/pynwb-behavior.md` — behavior container types (PupilTracking, EyeTracking, etc.)
 - `knowledge/pynwb-images.md` — image data and external video files
