@@ -13,6 +13,11 @@
 - `metadata.yaml` with all collected metadata
 - `convert_all_sessions.py` for batch conversion
 
+**Stacked PRs mode**: commit the scaffold, session-level metadata, an NWBConverter with no
+data interfaces, and the conversion scripts on `setup`. Then build one data stream at a time,
+each on its own branch created from the previous one, starting with the timing reference
+stream from Phase 4. Commit Step 9 per branch. See `knowledge/stacked-prs.md`.
+
 ### Step 1: Scaffold the Repository
 
 Create the standard directory structure INSIDE the repo that was cloned in Phase 1

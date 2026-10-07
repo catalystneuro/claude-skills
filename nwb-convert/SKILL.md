@@ -7,7 +7,7 @@ description: >
   Dandiset metadata, and example notebook generation. Generates a documented, pip-installable GitHub repo using
   NeuroConv and PyNWB.
 user_invocable: true
-argument: Optional path to data directory, Google Drive folder URL, or existing conversion repo
+argument: Optional path to data directory, Google Drive folder URL, or existing conversion repo. Add `--stacked` to deliver the conversion as one pull request per data stream.
 tools:
   - Bash
   - Read
@@ -115,6 +115,21 @@ This skill runs in two deployment modes:
    - The data directory is provided via a file picker in the UI
    - Conversation transcripts are always shared with CatalystNeuro for monitoring
    - The user interacts through a chat UI, not a terminal
+
+## Delivery Modes
+
+The conversion always runs end-to-end. The delivery mode only decides how the finished work
+is packaged for review. Phase 1 asks which one the user wants unless `--stacked` was passed.
+
+1. **Single repo** (default): all code lands on `main`, as described in each phase.
+2. **Stacked PRs**: the work is split into a stack of pull requests: one `setup` PR for the
+   repo scaffold and session-level metadata, then one PR per data stream, each stacked on the
+   previous one. Each stream PR carries that stream's interface code, converter wiring,
+   metadata, sync logic and review notebook, so a reviewer can approve and merge one stream at
+   a time. Requires `gh` authenticated with push access to the conversion repo. See
+   `knowledge/stacked-prs.md` for the branch workflow.
+
+In both modes, Phase 7 writes one review notebook per data stream.
 
 ## Environment
 
