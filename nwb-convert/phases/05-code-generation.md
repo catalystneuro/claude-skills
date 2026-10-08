@@ -99,6 +99,22 @@ class <ConversionName>NWBConverter(NWBConverter):
         pass
 ```
 
+### Step 3a: Reuse NeuroConv Interfaces Before Writing Your Own
+
+Code that calls existing NeuroConv interfaces is easier for reviewers to follow than custom
+code. When a stock interface almost fits a data stream, adapt it in this order and stop at the
+first option that works:
+
+1. **Compose stock interfaces in the converter.** Use several instances of the same interface
+   when one stream is split across files or segments (e.g. one `TDTFiberPhotometryInterface`
+   per tank when Synapse was restarted mid-session, each with its own `metadata_key` and
+   series name, shifted to the session clock in `temporally_align_data_interfaces`).
+2. **Subclass the format-specific interface**, not its base class, and override only the
+   smallest method that needs to change.
+3. **Write a custom interface on a base class** (Step 4). Before doing so, record in
+   `conversion_notes.md` which stock interface you considered and why options 1 and 2 do not
+   work.
+
 ### Step 3b: Check Registry for Reusable Custom Interfaces
 
 Before writing a custom interface from scratch, check the conversion registry for
