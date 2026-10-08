@@ -221,6 +221,9 @@ If any issues are found:
 
 ### Push Phase 6 Results
 
+In stacked PRs mode, commit each fix on the branch of the stream it belongs to and carry it up
+the stack (`knowledge/stacked-prs.md`, "Changing a lower branch") in place of the single commit below.
+
 After all tests pass and nwbinspector is clean, commit any bug fixes and push:
 ```bash
 git add -A
