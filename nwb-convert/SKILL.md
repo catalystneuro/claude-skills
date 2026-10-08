@@ -147,7 +147,9 @@ Google Drive authentication if needed.
 
 When you need to look up NeuroConv interfaces, repo structure patterns, or NWB data model
 details, consult the knowledge base files:
-- `knowledge/neuroconv-interfaces.yaml` — all available interfaces and their schemas
+- `knowledge/neuroconv-interfaces.yaml` — all available interfaces and their schemas. Do not use
+  an entry marked `deprecated`; it names the replacement. Maintainers refresh this file with
+  `tools/update_neuroconv_interfaces.py`.
 - `knowledge/repo-structure.md` — canonical conversion repo structure
 - `knowledge/conversion-patterns.md` — patterns from real conversion repos
 - `knowledge/nwb-best-practices.md` — NWB conventions and common mistakes (from NWB Inspector)

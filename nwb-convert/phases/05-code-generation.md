@@ -234,7 +234,7 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 | Continuous neural signal | `ElectricalSeries` | `nwbfile.add_acquisition()` |
 | Position (x, y) | `Position` > `SpatialSeries` | `processing["behavior"]` |
 | Running speed | `TimeSeries` | `processing["behavior"]` |
-| Lick times | `TimeSeries` (binary) or ndx-events `Events` | `processing["behavior"]` |
+| Lick times | `EventsTable` | `nwbfile.add_events_table()` |
 | Trial info | `TimeIntervals` | `nwbfile.add_trial()` |
 | Epochs | `TimeIntervals` | `nwbfile.add_epoch()` |
 | Pupil tracking | `PupilTracking` > `TimeSeries` | `processing["behavior"]` |
@@ -242,7 +242,7 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 | Stimulus times | `TimeIntervals` | `nwbfile.add_stimulus()` |
 | Fluorescence traces | `RoiResponseSeries` | `processing["ophys"]` |
 | ROI masks | `PlaneSegmentation` | `processing["ophys"]` |
-| Reward events | `TimeSeries` or `LabeledEvents` | `processing["behavior"]` |
+| Reward events | `EventsTable` | `nwbfile.add_events_table()` |
 | Animal video | `ImageSeries` (external_file) | `nwbfile.add_acquisition()` |
 | Compass direction | `CompassDirection` > `SpatialSeries` | `processing["behavior"]` |
 | Optogenetic stimulus | ndx-optogenetics `OptogeneticEpochsTable` or `OptogeneticPulsesTable` | `nwbfile.add_time_intervals()` |
