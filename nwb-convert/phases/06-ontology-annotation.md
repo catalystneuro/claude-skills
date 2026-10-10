@@ -79,21 +79,28 @@ returns matches what the lab meant.
 - **Strain** needs the exact stock, not just the strain name. `C57BL/6J` from JAX and
   `C57BL/6N` from another vendor are different RRIDs. Take the stock number from the paper's
   methods or ask.
-- **Experimenters** often share a name with other researchers. Prefer the ORCID printed in
-  the paper. Otherwise match on affiliation and on the works listed in the ORCID record,
-  and ask when neither settles it.
+- **Institutions** often share a name or acronym with organizations in other countries
+  (there are several records named "National Institutes of Health"), and the first search
+  hit is frequently the wrong one. Read the record's metadata, not only its name: the
+  country and city must be the lab's, and the record must be the organization itself, not
+  a parent or child of it.
+- **Experimenters** often share a name with other researchers, and common names return
+  thousands of ORCID records. A name match alone is never enough, even when the search
+  returns a single record. Take the ORCID from the lab's paper where it is listed.
+  Otherwise accept a record only when its employment history places the person at the
+  lab's institution or its works include the lab's papers, and ask when neither holds.
 
 ### Step 3: Confirm the Uncertain Ones with the User
 
 A match is unambiguous when the registry's label, acronym, or a listed synonym is the value
-itself: a Latin binomial, an exact atlas acronym, an institution whose name is the ROR
-display name, a body part named for the structure (`"neck"`, `"left_shoulder"`), or an ORCID
-printed in the paper. These do not need a question.
+itself: a Latin binomial, an exact atlas acronym, an institution whose ROR record has the
+same name and the lab's country and city, a body part named for the structure (`"neck"`, `"left_shoulder"`), or an ORCID
+listed for that author in the lab's paper. These do not need a question.
 
 Ask about the rest in one batch, showing the candidate and its registry label. This
 typically means region names that are not atlas terms (`"PFC"`), a strain without a stock
-number, an experimenter whose ORCID is not in the paper or whose record lists a different
-affiliation, and keypoint names whose meaning is not obvious:
+number, an experimenter whose ORCID is not in the paper and whose record cannot be tied to
+the lab, and keypoint names whose meaning is not obvious:
 
 > I'm linking the terms in your files to standard identifiers. Most were unambiguous, but
 > I'd like to confirm three:

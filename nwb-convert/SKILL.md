@@ -242,6 +242,7 @@ generously — they make the conversation faster and reduce ambiguity.
     original acquisition files are available. Accept processed data gracefully when
     raw data is truly unavailable.
 12. NEVER write an ontology or registry identifier (NCBITaxon, MBA, UBERON, RRID, ROR, ORCID)
-    from memory. Look each one up in its registry and check that the returned label matches
-    what the lab meant. Leave a value unannotated rather than guess.
+    from memory. Look each one up in its registry and check that the returned record matches
+    what the lab meant, using its metadata and not only its name (a ROR record's country, an
+    ORCID record's affiliation). Leave a value unannotated rather than guess.
 </instructions>

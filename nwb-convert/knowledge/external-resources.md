@@ -113,32 +113,97 @@ The `id` of the hit is the MBA identifier: `MBA:382`, with
 to search by name instead of acronym. Human regions (HBA) use `graph_id` 10 and
 `https://purl.brain-bican.org/ontology/hbao/HBA_<id>`.
 
-**Institutions (ROR)**:
+**Institutions (ROR)**. Many organizations share a name or an acronym, so the name alone
+does not identify a record and the first hit is often the wrong one. Searching
+`National Institutes of Health` returns the Malaysian NIH ahead of the one in Bethesda, and
+`NIH` matches national institutes in Thailand, Malaysia, Somalia, Pakistan, and Armenia, as
+well as a hydrology institute in India and a sport sciences school in Norway. Print the metadata of
+each candidate and choose the record whose country and city are the lab's:
 
 ```bash
-curl -s "https://api.ror.org/v2/organizations?query=Stanford%20University"
+curl -s "https://api.ror.org/v2/organizations?query=National%20Institutes%20of%20Health" | python -c "
+import json, sys
+for org in json.load(sys.stdin)['items'][:10]:
+    names = {t: n['value'] for n in org['names'] for t in n['types']}
+    place = org['locations'][0]['geonames_details']
+    parents = [r['label'] for r in org.get('relationships', []) if r['type'] == 'parent']
+    print(org['id'], '|', names.get('ror_display'), '|', names.get('acronym'), '|',
+          place.get('name'), place.get('country_name'), '|', org['status'], org['types'], '| parent:', parents)
+"
 ```
 
-`items[0].id` is the `entity_uri` (`https://ror.org/00f54p054`); the `entity_id` is
-`ROR:00f54p054`.
+Check each of these before accepting a record:
 
-**People (ORCID)**:
+- **Location**: the country and city in `locations[].geonames_details` match where the lab
+  is. When the country is known, narrow the search with
+  `&filter=locations.geonames_details.country_code:US`.
+- **Level**: `relationships` lists parents and children. A university, its medical school,
+  and its institutes are often separate records (`Stanford University` and
+  `Stanford Medicine`; the NIH and each of its institutes). Use the record for the
+  organization named in `NWBFile.institution`, not a parent or child of it.
+- **Status**: `status` is `active`. A `withdrawn` or `inactive` record usually names its
+  successor in `relationships`; use the successor.
+- **Kind**: `types` (`education`, `government`, `healthcare`, `facility`, `funder`) fits what
+  the organization is.
 
-```bash
-curl -s -H "Accept: application/json" \
-  "https://pub.orcid.org/v3.0/expanded-search/?q=given-names:Jane+AND+family-name:Doe&rows=5"
-```
+The `id` of the chosen record is the `entity_uri` (`https://ror.org/01cwqze88`), and the
+`entity_id` is `ROR:01cwqze88`.
 
-Each result lists `orcid-id` and `institution-name`. Use the affiliation to tell apart
-people with the same name. When the affiliation does not settle it, list the person's
-works and look for the lab's papers:
+**People (ORCID)**. A name does not identify a person. A search for a common name returns
+hundreds or thousands of records (`Wei Zhang` returns more than 3,000), and a search that
+returns a single record is not proof either, because the experimenter may have no ORCID at
+all and the one hit may be someone else. Accept a record only when something other than the
+name ties it to this lab. Work down this list and stop at the first source that settles it:
 
-```bash
-curl -s -H "Accept: application/json" "https://pub.orcid.org/v3.0/0000-0002-1825-0097/works"
-```
+1. **The lab's paper.** Crossref lists the ORCIDs the authors supplied to the journal:
 
-Titles are at `group[].work-summary[0].title.title.value`. The `entity_id` is
-`ORCID:<orcid-id>` and the `entity_uri` is `https://orcid.org/<orcid-id>`.
+   ```bash
+   curl -s "https://api.crossref.org/works/10.7554/eLife.78362" | python -c "
+   import json, sys
+   for author in json.load(sys.stdin)['message']['author']:
+       print(author.get('family'), '|', author.get('given'), '|', author.get('ORCID'))
+   "
+   ```
+
+   Not every author has one there. The paper's PDF or author page may list more.
+
+2. **ORCID records that claim the lab's paper.** Search by the paper's DOI and match the
+   names in the result:
+
+   ```bash
+   curl -s -H "Accept: application/json" \
+     "https://pub.orcid.org/v3.0/expanded-search/?q=doi-self:%2210.7554/eLife.78362%22&rows=50"
+   ```
+
+3. **Name search, then check each candidate's record.** Narrow by the institution when the
+   name is common:
+
+   ```bash
+   curl -s -H "Accept: application/json" \
+     "https://pub.orcid.org/v3.0/expanded-search/?q=given-names:Jane+AND+family-name:Doe+AND+affiliation-org-name:%22Stanford+University%22&rows=10"
+   ```
+
+   `num-found` is the number of matching records, and each result lists `orcid-id`,
+   `given-names`, `family-names`, and `institution-name`. The institution filter matches any
+   affiliation the person has ever listed, so it narrows the list without confirming anyone.
+   For each remaining candidate, read the employment history and the works:
+
+   ```bash
+   curl -s -H "Accept: application/json" "https://pub.orcid.org/v3.0/0000-0002-1825-0097/employments"
+   curl -s -H "Accept: application/json" "https://pub.orcid.org/v3.0/0000-0002-1825-0097/works"
+   ```
+
+   Employers are at `affiliation-group[].summaries[0].employment-summary.organization` (name
+   and address, with start and end dates beside it), and work titles are at
+   `group[].work-summary[0].title.title.value`. The record fits when it places the person at
+   the lab's institution around the time of the experiment, or lists the lab's papers.
+
+Search under the variants of the name as well (a short form of the given name, initials, a
+different transliteration, a former family name). If no record can be tied to the lab, ask
+the user for the ORCID or leave the experimenter unannotated. Do not pick the most plausible
+of several candidates.
+
+The `entity_id` is `ORCID:<orcid-id>` and the `entity_uri` is `https://orcid.org/<orcid-id>`.
 
 **Strains (RRID)**: find the stock on the vendor's page (e.g. the JAX strain page shows
 `RRID:IMSR_JAX:000664`), then confirm that
