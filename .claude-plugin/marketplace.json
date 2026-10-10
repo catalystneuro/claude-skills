@@ -40,7 +40,7 @@
     },
     {
       "name": "nwb-convert",
-      "description": "Convert neurophysiology data to NWB format and publish on DANDI. Guides through experiment discovery, data inspection, metadata collection, synchronization, code generation, testing, upload, and Dandiset metadata. Generates a pip-installable conversion repo using NeuroConv and PyNWB.",
+      "description": "Convert neurophysiology data to NWB format and publish on DANDI. Guides through experiment discovery, data inspection, metadata collection, synchronization, code generation, ontology annotation, testing, upload, and Dandiset metadata. Generates a pip-installable conversion repo using NeuroConv and PyNWB.",
       "source": "./",
       "version": "0.1.0",
       "strict": false,

@@ -3,7 +3,7 @@ name: nwb-convert
 description: >
   Lead a conversation to convert neurophysiology data to NWB format and publish on DANDI.
   Guides the user (typically a lab experimentalist) through experiment discovery, data inspection,
-  metadata collection, synchronization analysis, code generation, testing, DANDI upload,
+  metadata collection, synchronization analysis, code generation, ontology annotation, testing, DANDI upload,
   Dandiset metadata, and example notebook generation. Generates a documented, pip-installable GitHub repo using
   NeuroConv and PyNWB.
 user_invocable: true
@@ -86,20 +86,23 @@ $file: ./phases/04-sync.md
 ### Phase 5: Code Generation
 $file: ./phases/05-code-generation.md
 
-### Phase 6: Testing & Validation
-$file: ./phases/06-testing.md
+### Phase 6: Ontology Annotation
+$file: ./phases/06-ontology-annotation.md
 
-### Phase 7: Local Example Notebook
-$file: ./phases/07-local-notebook.md
+### Phase 7: Testing & Validation
+$file: ./phases/07-testing.md
 
-### Phase 8: DANDI Upload
-$file: ./phases/08-dandi-upload.md
+### Phase 8: Local Example Notebook
+$file: ./phases/08-local-notebook.md
 
-### Phase 9: DANDI Metadata
-$file: ./phases/09-dandi-metadata.md
+### Phase 9: DANDI Upload
+$file: ./phases/09-dandi-upload.md
 
-### Phase 10: Example Notebook Generation
-$file: ./phases/10-notebook-generation.md
+### Phase 10: DANDI Metadata
+$file: ./phases/10-dandi-metadata.md
+
+### Phase 11: Example Notebook Generation
+$file: ./phases/11-notebook-generation.md
 
 ## Deployment Modes
 
@@ -129,7 +132,7 @@ is packaged for review. Phase 1 asks which one the user wants unless `--stacked`
    a time. Requires `gh` authenticated with push access to the conversion repo. See
    `knowledge/stacked-prs.md` for the branch workflow.
 
-In both modes, Phase 7 writes one review notebook per data stream.
+In both modes, Phase 8 writes one review notebook per data stream.
 
 ## Environment
 
@@ -153,6 +156,7 @@ details, consult the knowledge base files:
 - `knowledge/repo-structure.md` — canonical conversion repo structure
 - `knowledge/conversion-patterns.md` — patterns from real conversion repos
 - `knowledge/nwb-best-practices.md` — NWB conventions and common mistakes (from NWB Inspector)
+- `knowledge/external-resources.md` — linking terms to ontologies and registries with HERD: lookup endpoints and a tested helper
 
 ### Conversion Registry (`nwb-conversions` GitHub org)
 
@@ -164,8 +168,8 @@ A weekly GitHub Action aggregates all manifests into `nwb-conversions/.github/re
 - **Phase 1**: Fetch `registry.yaml` to find similar prior conversions by species, modality, or file format
 - **Phase 2**: Cross-reference `format_hints` to accelerate file-to-interface mapping
 - **Phase 5**: Search for reusable custom interfaces before writing from scratch
-- **Phase 6**: Check `lessons` for known pitfalls with the same formats/tools
-- **Phase 7**: Write `conversion_manifest.yaml` to feed back into the registry
+- **Phase 7**: Check `lessons` for known pitfalls with the same formats/tools
+- **Phase 8**: Write `conversion_manifest.yaml` to feed back into the registry
 
 **Authentication:** The skill calls the nwb-conversions API
 (`https://nwb-conversions-api.ben-dichter.workers.dev`) to create private repos in the
@@ -237,4 +241,8 @@ generously — they make the conversation faster and reduce ambiguity.
     structs, pre-computed averages, or custom post-processing artifacts, ask if the
     original acquisition files are available. Accept processed data gracefully when
     raw data is truly unavailable.
+12. NEVER write an ontology or registry identifier (NCBITaxon, MBA, UBERON, RRID, ROR, ORCID)
+    from memory. Look each one up in its registry and check that the returned record matches
+    what the lab meant, using its metadata and not only its name (a ROR record's country, an
+    ORCID record's affiliation). Leave a value unannotated rather than guess.
 </instructions>

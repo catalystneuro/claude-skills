@@ -1,0 +1,9 @@
+neuroconv
+spikeinterface
+roiextractors
+ndx-pose
+ndx-fiber-photometry
+nwbinspector
+dandi
+pyyaml
+pytest
