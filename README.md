@@ -20,8 +20,10 @@ Then install individual skills:
 ```
 /plugin install analyzing-dandi-datasets@catalystneuro-skills
 /plugin install using-nemos@catalystneuro-skills
+/plugin install using-pynapple@catalystneuro-skills
 /plugin install nwb-convert@catalystneuro-skills
 /plugin install gin-upload@catalystneuro-skills
+/plugin install dandiset-metadata@catalystneuro-skills
 ```
 
 ### Manual Installation (Alternative)
@@ -59,6 +61,8 @@ Convert neurophysiology data to [NWB](https://www.nwb.org/) format and publish o
 5. **Code Generation** - Generate a complete, pip-installable conversion repo using [NeuroConv](https://neuroconv.readthedocs.io/)
 6. **Testing & Validation** - Run conversions, validate with NWB Inspector, fix issues iteratively
 7. **DANDI Upload** - Organize and upload validated NWB files to the DANDI Archive
+8. **DANDI Metadata** - Fill in authors, funding, publications, and subject terms with the `dandiset-metadata` skill
+9. **Example Notebook** - Write a streaming example notebook and submit it to dandi/example-notebooks
 
 **Supported modalities:**
 - Extracellular electrophysiology (SpikeGLX, OpenEphys, Intan, Blackrock, Neuralynx, Plexon, TDT, Axona)
@@ -83,6 +87,15 @@ Or simply describe what you want to convert:
 - Canonical conversion repo structure (cookiecutter template)
 - Patterns from ~20 real CatalystNeuro conversion repos
 - NWB best practices distilled from NWB Inspector
+
+### dandiset-metadata
+
+Populate or improve the metadata of a dandiset on DANDI: contributors with ORCIDs and ROR
+affiliations, the contact person, funders with award numbers, related publications and code,
+subject terms, keywords, license, and ethics approval. Every identifier comes from a live
+lookup. This skill is maintained by the DANDI project in
+[dandi/dandi-skills](https://github.com/dandi/dandi-skills) and listed here so that
+`nwb-convert` can use it after an upload; installing `nwb-convert` installs it as a dependency.
 
 ### analyzing-dandi-datasets
 
@@ -115,7 +128,18 @@ Add test data to the [gin](https://gin.g-node.org/) git-annex repositories used 
 
 ### using-pynapple
 
-**Moved.** The `using-pynapple` skill now lives in [pynapple-org/claude-skills](https://github.com/pynapple-org/claude-skills) and is maintained there. It is no longer distributed from this repository.
+**Maintained by [pynapple-org](https://github.com/pynapple-org/claude-skills).** The `using-pynapple` skill has moved to [pynapple-org/claude-skills](https://github.com/pynapple-org/claude-skills), where the pynapple maintainers develop it. This marketplace still lists it, installing it straight from that repository:
+
+```
+/plugin install using-pynapple@catalystneuro-skills
+```
+
+Installing it from the pynapple marketplace directly works too, and gets you the same skill:
+
+```
+/plugin marketplace add pynapple-org/claude-skills
+/plugin install using-pynapple@pynapple-skills
+```
 
 ## Usage
 

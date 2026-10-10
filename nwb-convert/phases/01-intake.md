@@ -346,6 +346,18 @@ find <path> -maxdepth 3 -type f | head -50
 ```
 Then ask targeted questions based on what you see.
 
+### Delivery Mode
+
+Unless the skill was invoked with `--stacked`, ask once, with the first round of follow-ups:
+
+> When the conversion is done, how would you like to receive the code?
+> 1. As a single repository (default)
+> 2. Split into one pull request per data stream, so each stream can be reviewed and merged on its own
+
+Either way the conversion runs straight through without waiting for review. For the stacked
+option, confirm that `gh` is authenticated with push access to the conversion repo, and follow
+`knowledge/stacked-prs.md` from here on.
+
 ### Follow-up Questions (ask as needed)
 
 **About recordings:**
@@ -473,11 +485,17 @@ After this phase, update `conversion_notes.md` with:
 |------------|---------|-----|---------------|----------|--------|-------|
 | ... | Mus musculus | M | 2019-10-22 | C57BL/6J | 25 g | control |
 
+## Delivery Mode
+Single repo | Stacked PRs (branch order: setup, ...)
+
 ## Open Questions
 - [ ] ...
 ```
 
 ### Push Phase 1 Results
+
+In stacked mode, first create the `setup` branch (`git checkout -b setup`) and push it with
+`git push -u origin HEAD` here and in later phases.
 
 After writing `conversion_notes.md`, commit and push:
 ```bash

@@ -13,6 +13,11 @@
 - `metadata.yaml` with all collected metadata
 - `convert_all_sessions.py` for batch conversion
 
+**Stacked PRs mode**: commit the scaffold, session-level metadata, an NWBConverter with no
+data interfaces, and the conversion scripts on `setup`. Then build one data stream at a time,
+each on its own branch created from the previous one, starting with the timing reference
+stream from Phase 4. Commit Step 9 per branch. See `knowledge/stacked-prs.md`.
+
 ### Step 1: Scaffold the Repository
 
 Create the standard directory structure INSIDE the repo that was cloned in Phase 1
@@ -98,6 +103,22 @@ class <ConversionName>NWBConverter(NWBConverter):
         # Implement sync plan from Phase 4
         pass
 ```
+
+### Step 3a: Reuse NeuroConv Interfaces Before Writing Your Own
+
+Code that calls existing NeuroConv interfaces is easier for reviewers to follow than custom
+code. When a stock interface almost fits a data stream, adapt it in this order and stop at the
+first option that works:
+
+1. **Compose stock interfaces in the converter.** Use several instances of the same interface
+   when one stream is split across files or segments (e.g. one `TDTFiberPhotometryInterface`
+   per tank when Synapse was restarted mid-session, each with its own `metadata_key` and
+   series name, shifted to the session clock in `temporally_align_data_interfaces`).
+2. **Subclass the format-specific interface**, not its base class, and override only the
+   smallest method that needs to change.
+3. **Write a custom interface on a base class** (Step 4). Before doing so, record in
+   `conversion_notes.md` which stock interface you considered and why options 1 and 2 do not
+   work.
 
 ### Step 3b: Check Registry for Reusable Custom Interfaces
 
@@ -213,7 +234,7 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 | Continuous neural signal | `ElectricalSeries` | `nwbfile.add_acquisition()` |
 | Position (x, y) | `Position` > `SpatialSeries` | `processing["behavior"]` |
 | Running speed | `TimeSeries` | `processing["behavior"]` |
-| Lick times | `TimeSeries` (binary) or ndx-events `Events` | `processing["behavior"]` |
+| Lick times | `EventsTable` | `nwbfile.add_events_table()` |
 | Trial info | `TimeIntervals` | `nwbfile.add_trial()` |
 | Epochs | `TimeIntervals` | `nwbfile.add_epoch()` |
 | Pupil tracking | `PupilTracking` > `TimeSeries` | `processing["behavior"]` |
@@ -221,14 +242,14 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 | Stimulus times | `TimeIntervals` | `nwbfile.add_stimulus()` |
 | Fluorescence traces | `RoiResponseSeries` | `processing["ophys"]` |
 | ROI masks | `PlaneSegmentation` | `processing["ophys"]` |
-| Reward events | `TimeSeries` or `LabeledEvents` | `processing["behavior"]` |
+| Reward events | `EventsTable` | `nwbfile.add_events_table()` |
 | Animal video | `ImageSeries` (external_file) | `nwbfile.add_acquisition()` |
 | Compass direction | `CompassDirection` > `SpatialSeries` | `processing["behavior"]` |
-| Optogenetic stimulus | `OptogeneticSeries` | `nwbfile.add_stimulus()` |
+| Optogenetic stimulus | ndx-optogenetics `OptogeneticEpochsTable` or `OptogeneticPulsesTable` | `nwbfile.add_time_intervals()` |
 
 **For detailed PyNWB construction patterns by domain, see:**
 - `knowledge/pynwb-icephys.md` — intracellular electrophysiology
-- `knowledge/pynwb-optogenetics.md` — optogenetic stimulation
+- `knowledge/ndx-optogenetics.md` — ndx-optogenetics extension (REQUIRED for optogenetics)
 - `knowledge/pynwb-ophys-advanced.md` — advanced optical physiology (ROIs, segmentation, motion correction)
 - `knowledge/pynwb-behavior.md` — behavior container types (PupilTracking, EyeTracking, etc.)
 - `knowledge/pynwb-images.md` — image data and external video files

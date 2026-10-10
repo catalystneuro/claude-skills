@@ -1,15 +1,16 @@
 ## Phase 7: Local Example Notebook
 
-**Goal**: Create a Jupyter notebook that demonstrates how to load and visualize the locally
-converted NWB data. The notebook validates the conversion output and serves as a starting
-point for analysis — before the data is uploaded to DANDI.
+**Goal**: Create Jupyter notebooks that load and visualize the locally converted NWB data:
+one review notebook per data stream, so a reviewer can check each stream on its own, and one
+demo notebook with combined analyses that serves as a starting point for analysis. Both
+validate the conversion output before the data is uploaded to DANDI.
 
 **Entry**: Testing and validation are complete (Phase 6). At least one full NWB file has
 been written to disk.
 
-**Exit criteria**: A tested `.ipynb` notebook that runs end-to-end loading local NWB files,
-with clear prose, visualizations of each data stream, and at least one combined analysis
-(e.g., place fields, PSTHs, or trial-aligned time series).
+**Exit criteria**: Tested `.ipynb` notebooks that run end-to-end loading local NWB files: one
+review notebook per data stream (Step 3b), and a demo notebook with clear prose and at least
+one combined analysis (e.g., place fields, PSTHs, or trial-aligned time series).
 
 ### Step 0: Gather Context
 
@@ -50,13 +51,8 @@ template, including only sections relevant to the dataset:
    - Open the NWB file using NWBHDF5IO
    - Explore the NWB file structure (subject, session, electrodes, epochs)
 
-4. Visualize Individual Data Streams (include all that apply):
-   a. Position/trajectory plots (colored by time or epoch)
-   b. Spike raster plots (all units, subset of time)
-   c. LFP traces or spectrograms
-   d. Fluorescence traces (dF/F or raw)
-   e. Behavioral events or trial structure
-   f. Pre-computed data (rate maps, waveforms, etc.)
+4. Individual Data Streams
+   - Link to each per-stream review notebook (Step 3b)
 
 5. Combined Analyses (include 1-2 that match the data):
    a. Place fields — spike positions overlaid on trajectory, 2D firing rate maps
@@ -90,6 +86,7 @@ Create the notebook inside the conversion repo in a `notebooks/` directory:
     environment.yml
     README.md
     <lab_name>_demo.ipynb
+    <stream>.ipynb          ← one review notebook per data stream (Step 3b)
 ```
 
 **environment.yml** — minimal conda environment:
@@ -282,13 +279,52 @@ for i, ep in enumerate(trial_epochs):
   warnings.filterwarnings("ignore", message=".*pynapple.*")
   ```
 
-### Step 4: Test the Notebook
+### Step 3b: Write the Per-Stream Review Notebooks
 
-Run the notebook end-to-end using `jupyter execute`:
+Write one notebook per data stream, named after the stream (e.g. `fiber_photometry.ipynb`).
+Each one lets a reviewer confirm that stream was converted correctly without reading the
+conversion code. Use the same demo session, file access pattern, and cell style as above.
+
+1. **Title**: the stream, its source files and recording system.
+2. **Structural summary**: a table of the NWB objects that hold this stream, with their
+   neurodata type and namespace, so a reviewer sees at a glance which core types and
+   extensions were used and whether device and metadata objects exist. List the stream's
+   object names, including its devices and metadata containers:
+
+   ```python
+   import pandas as pd
+   from hdmf.container import Container
+
+   stream_object_names = ["<series or table name>", "<device name>", "<metadata container name>"]
+   summary = pd.DataFrame(
+       [
+           dict(
+               name=neurodata_object.name,
+               neurodata_type=neurodata_object.neurodata_type,
+               namespace=neurodata_object.namespace,
+               parent=neurodata_object.parent.name,
+           )
+           for neurodata_object in nwbfile.objects.values()
+           if isinstance(neurodata_object, Container) and neurodata_object.parent is not None
+       ]
+   )
+   summary[summary["name"].isin(stream_object_names)]
+   ```
+
+   Follow it with a markdown cell stating which types the stream should use (e.g.
+   ndx-fiber-photometry for fiber photometry, ndx-optogenetics for optogenetics).
+3. **Plots of this stream alone**: e.g. traces over a short window and the full session,
+   event rasters, position trajectories, or rate maps, whichever fit the data.
+4. **Checks against the source**: one or two comparisons a reviewer can verify by eye,
+   such as event counts per type or the first samples next to the values read from the
+   source files.
+
+
+Run every notebook end-to-end using `jupyter execute`:
 
 ```bash
 cd <conversion_repo>/notebooks
-jupyter execute <lab_name>_demo.ipynb --timeout=600
+for notebook in *.ipynb; do jupyter execute "$notebook" --timeout=600; done
 ```
 
 Or test with `nbconvert`:
@@ -307,16 +343,24 @@ If cells fail, fix the code and re-run. Common issues:
 - **pynapple conversion warnings**: Add `nap.nap_config.suppress_conversion_warnings = True`
 - **Missing data**: A session might not have all expected data streams. Check the NWB structure first.
 
-Present the notebook to the user and request feedback. Once approved, commit it to the
-conversion repo:
+Present the notebooks to the user and request feedback. Once approved, commit them to the
+conversion repo. In stacked PRs mode, commit each review notebook on its stream's branch and
+the demo notebook on the last branch, carrying changes up the stack as described in
+`knowledge/stacked-prs.md`, then go to Step 5. Otherwise:
 
 ```bash
 git add notebooks/
-git commit -m "Add local example notebook"
+git commit -m "Add local example notebooks"
 git push
 ```
 
-> The local example notebook is saved to `notebooks/<lab_name>_demo.ipynb`.
-> You can open it anytime to explore the converted data before uploading to DANDI.
+### Step 5: Open the Stacked PRs (stacked PRs mode only)
+
+Push every branch and open one PR per branch, from the bottom of the stack up, as described
+in `knowledge/stacked-prs.md` ("Opening the PRs"). Then share the list of PR links with the
+user and note that they are merged in order from the bottom.
+
+> The notebooks are saved in `notebooks/`, one per data stream plus `<lab_name>_demo.ipynb`.
+> You can open them anytime to explore the converted data before uploading to DANDI.
 >
 > Next we'll upload the data to DANDI.

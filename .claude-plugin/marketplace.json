@@ -31,13 +31,24 @@
       ]
     },
     {
+      "name": "using-pynapple",
+      "description": "Analyze neurophysiology time series using the pynapple Python package. Covers core data structures, time series manipulation, metadata filtering, tuning curves, decoding, and signal processing. Maintained by pynapple-org.",
+      "source": {
+        "source": "github",
+        "repo": "pynapple-org/claude-skills"
+      }
+    },
+    {
       "name": "nwb-convert",
-      "description": "Convert neurophysiology data to NWB format and publish on DANDI. Guides through experiment discovery, data inspection, metadata collection, synchronization, code generation, testing, and upload. Generates a pip-installable conversion repo using NeuroConv and PyNWB.",
+      "description": "Convert neurophysiology data to NWB format and publish on DANDI. Guides through experiment discovery, data inspection, metadata collection, synchronization, code generation, testing, upload, and Dandiset metadata. Generates a pip-installable conversion repo using NeuroConv and PyNWB.",
       "source": "./",
       "version": "0.1.0",
       "strict": false,
       "skills": [
         "./nwb-convert"
+      ],
+      "dependencies": [
+        "dandiset-metadata"
       ]
     },
     {
@@ -58,6 +69,21 @@
       "strict": false,
       "skills": [
         "./gin-upload"
+      ]
+    },
+    {
+      "name": "dandiset-metadata",
+      "description": "Populate or improve dandiset metadata on the DANDI Archive: contributors with ORCIDs and ROR affiliations, funders and awards, related publications, subject terms, keywords, license, and ethics approval. Maintained by DANDI in dandi/dandi-skills.",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/dandi/dandi-skills.git",
+        "path": "dandiset-metadata",
+        "ref": "main"
+      },
+      "version": "0.1.0",
+      "strict": false,
+      "skills": [
+        "./"
       ]
     }
   ]
