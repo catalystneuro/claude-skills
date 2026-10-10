@@ -1,4 +1,4 @@
-## Phase 6: Testing & Validation
+## Phase 7: Testing & Validation
 
 **Goal**: Verify the conversion produces valid, complete NWB files.
 
@@ -75,6 +75,26 @@ with NWBHDF5IO("/path/to/output/session.nwb", "r") as io:
         if hasattr(ts, 'data'):
             print(f"  {name}: shape={ts.data.shape}, dtype={ts.data.dtype}")
 ```
+
+#### Check the Ontology Annotations
+
+Phase 6 wired HERD references into the converter. Confirm they were written by adding this
+inside the `with` block above:
+
+```python
+    # Check ontology annotations
+    if nwbfile.external_resources is None:
+        print("External resources: none written")
+    else:
+        references = nwbfile.external_resources.to_dataframe()
+        print(references[["object_type", "relative_path", "key", "entity_id", "entity_uri"]].to_string())
+```
+
+Each value in `external_resources.yaml` that this session uses should appear as a `key`. If
+one is missing, the string in the YAML does not match the string in the file exactly.
+A row with `object_type` `VectorData` is a table column, such as the `location` column of the
+electrodes table. `knowledge/external-resources.md` ("Checking a Written File") has a script
+that names each object and lists the values that were not written.
 
 ### Step 4: Run NWB Inspector
 
@@ -219,7 +239,7 @@ If any issues are found:
 - Check for required fields that are None or empty
 - Check types (datetime vs string, list vs single value)
 
-### Push Phase 6 Results
+### Push Phase 7 Results
 
 In stacked PRs mode, commit each fix on the branch of the stream it belongs to and carry it up
 the stack (`knowledge/stacked-prs.md`, "Changing a lower branch") in place of the single commit below.
@@ -227,7 +247,7 @@ the stack (`knowledge/stacked-prs.md`, "Changing a lower branch") in place of th
 After all tests pass and nwbinspector is clean, commit any bug fixes and push:
 ```bash
 git add -A
-git commit -m "Phase 6: testing and validation — all checks passing
+git commit -m "Phase 7: testing and validation — all checks passing
 
 nwbinspector: 0 CRITICAL, 0 BEST_PRACTICE_VIOLATION
 dandi validate: passed"

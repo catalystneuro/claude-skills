@@ -559,4 +559,4 @@ if git remote get-url origin &>/dev/null; then git push; fi
 ```
 
 This makes the conversion code immediately available in the org for reference by future
-conversions. The manifest will be added in Phase 7 after DANDI upload is complete.
+conversions. The manifest will be added in Phase 8 after DANDI upload is complete.

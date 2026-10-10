@@ -6,7 +6,7 @@ pipeline and gives the lab a starting point for analysis via Spyglass.
 
 **Entry**: Phase 9 verification passed. All key Spyglass tables are populated.
 
-**Baseline**: Follow **nwb-convert Phase 7** for notebook writing guidelines. These
+**Baseline**: Follow **nwb-convert Phase 8** for notebook writing guidelines. These
 apply unchanged:
 
 - **Step 1** (plan the notebook) — gather context, list data streams, present plan
@@ -20,7 +20,7 @@ apply unchanged:
 
 The Spyglass tutorial notebook differs from the local NWB notebook in that it
 demonstrates **DataJoint queries** rather than direct NWB file reads. Use the
-cell templates in this phase instead of the pynapple-based templates from Phase 7.
+cell templates in this phase instead of the pynapple-based templates from nwb-convert Phase 8.
 
 **Exit criteria**: A tested `notebooks/spyglass_tutorial.ipynb` that runs
 end-to-end, demonstrates DataJoint queries across all inserted data types, and

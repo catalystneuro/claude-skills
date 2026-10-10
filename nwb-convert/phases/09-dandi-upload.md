@@ -1,4 +1,4 @@
-## Phase 8: DANDI Upload
+## Phase 9: DANDI Upload
 
 **Goal**: Upload validated NWB files to the DANDI Archive for public sharing.
 
