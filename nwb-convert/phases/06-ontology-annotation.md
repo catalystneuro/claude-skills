@@ -70,6 +70,9 @@ returns matches what the lab meant.
   `UBERON:0003881` for mouse CA1. Add it when searching UBERON for the atlas's full
   structure name returns a term with the same meaning, and skip it otherwise. This does
   not need a question to the user.
+- **Regions the atlas does not have**: a value such as `"PFC"` for a mouse is not an Allen
+  structure. Ask which structure was targeted. If the lab means the broad region, a UBERON
+  term alone (`UBERON:0000451`, prefrontal cortex) is the right annotation.
 - **Placeholders** such as `"unknown"` are not annotated.
 - **Body parts** use UBERON for every species. Pose-estimation keypoints are usually named
   by the lab (`"EarL"`, `"left_shoulder"`, `"forepaw"`), so map each name to the structure it
@@ -87,15 +90,17 @@ returns matches what the lab meant.
 - **Experimenters** often share a name with other researchers, and common names return
   thousands of ORCID records. A name match alone is never enough, even when the search
   returns a single record. Take the ORCID from the lab's paper where it is listed.
-  Otherwise accept a record only when its employment history places the person at the
-  lab's institution or its works include the lab's papers, and ask when neither holds.
+  Otherwise accept a record only when its works include the lab's papers, or when its
+  employment matches the lab itself (department, dates, and field), not just the
+  institution. A large institution has many people with the same name. Ask when neither
+  holds.
 
 ### Step 3: Confirm the Uncertain Ones with the User
 
 A match is unambiguous when the registry's label, acronym, or a listed synonym is the value
 itself: a Latin binomial, an exact atlas acronym, an institution whose ROR record has the
 same name and the lab's country and city, a body part named for the structure (`"neck"`, `"left_shoulder"`), or an ORCID
-listed for that author in the lab's paper. These do not need a question.
+listed for that author in the lab's paper or whose record lists the lab's paper. These do not need a question.
 
 Ask about the rest in one batch, showing the candidate and its registry label. This
 typically means region names that are not atlas terms (`"PFC"`), a strain without a stock

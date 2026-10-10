@@ -94,8 +94,22 @@ for the hand or forepaw is `manus` (`UBERON:0002398`), and the foot or hindpaw i
 structure you meant, try the anatomical name.
 
 To add a UBERON term next to an Allen atlas term, search UBERON for the atlas's full
-structure name (`Ventral tegmental area` finds `UBERON:0002691`). Not every atlas structure
-has a UBERON term with the same meaning. When none does, keep only the atlas term.
+structure name (`Ventral tegmental area` finds `UBERON:0002691`). The names often differ
+(the Allen `Primary visual area` is the UBERON `primary visual cortex`), so do not judge by
+the label. UBERON terms cross-reference the atlas structures they correspond to, which is
+the test to use: fetch the candidate and check that its `obo_xref` lists the atlas ID.
+
+```bash
+curl -s "https://www.ebi.ac.uk/ols4/api/ontologies/uberon/terms?iri=http://purl.obolibrary.org/obo/UBERON_0002436" | python -c "
+import json, sys
+term = json.load(sys.stdin)['_embedded']['terms'][0]
+print(term['obo_id'], '|', term['label'], '|', term.get('synonyms'))
+print([f\"{x['database']}:{x['id']}\" for x in term.get('obo_xref') or [] if x.get('database') in ('MBA', 'HBA')])
+"
+```
+
+This prints `['MBA:385']`, which confirms `UBERON:0002436` as the companion of `VISp`. When
+no UBERON term cross-references the atlas structure, keep only the atlas term.
 
 ```bash
 curl -s "https://www.ebi.ac.uk/ols4/api/search?q=shoulder&ontology=uberon&exact=true&rows=3"
@@ -123,12 +137,15 @@ each candidate and choose the record whose country and city are the lab's:
 ```bash
 curl -s "https://api.ror.org/v2/organizations?query=National%20Institutes%20of%20Health" | python -c "
 import json, sys
-for org in json.load(sys.stdin)['items'][:10]:
+result = json.load(sys.stdin)
+print(result['number_of_results'], 'results')
+for org in result['items'][:10]:
     names = {t: n['value'] for n in org['names'] for t in n['types']}
     place = org['locations'][0]['geonames_details']
+    where = [place.get('name'), place.get('country_subdivision_name'), place.get('country_name')]
     parents = [r['label'] for r in org.get('relationships', []) if r['type'] == 'parent']
-    print(org['id'], '|', names.get('ror_display'), '|', names.get('acronym'), '|',
-          place.get('name'), place.get('country_name'), '|', org['status'], org['types'], '| parent:', parents)
+    print(org['id'], '|', names.get('ror_display'), '|', names.get('acronym'), '|', where, '|',
+          org['status'], org['types'], '| parent:', parents)
 "
 ```
 
@@ -165,38 +182,52 @@ name ties it to this lab. Work down this list and stop at the first source that 
    "
    ```
 
-   Not every author has one there. The paper's PDF or author page may list more.
+   Not every author has one there. For the authors without one, go on to the next source.
 
 2. **ORCID records that claim the lab's paper.** Search by the paper's DOI and match the
-   names in the result:
+   names in the result. The search is case-sensitive and people store DOIs in either case,
+   so search for the DOI as published and in lower case together. For this DOI the
+   published form alone finds 3 of the 8 records:
 
    ```bash
    curl -s -H "Accept: application/json" \
-     "https://pub.orcid.org/v3.0/expanded-search/?q=doi-self:%2210.7554/eLife.78362%22&rows=50"
+     "https://pub.orcid.org/v3.0/expanded-search/?q=doi-self:(%2210.7554/eLife.78362%22+OR+%2210.7554/elife.78362%22)&rows=50"
    ```
+
+   Search for the preprint's DOI as well if there is one.
 
 3. **Name search, then check each candidate's record.** Narrow by the institution when the
-   name is common:
+   name is common, using the ROR ID found for it, since people spell the same employer in
+   different ways ("NIH", "National Institutes of Health"):
 
    ```bash
    curl -s -H "Accept: application/json" \
-     "https://pub.orcid.org/v3.0/expanded-search/?q=given-names:Jane+AND+family-name:Doe+AND+affiliation-org-name:%22Stanford+University%22&rows=10"
+     "https://pub.orcid.org/v3.0/expanded-search/?q=given-names:Jane+AND+family-name:Doe+AND+ror-org-id:%22https://ror.org/00f54p054%22&rows=10"
    ```
 
-   `num-found` is the number of matching records, and each result lists `orcid-id`,
-   `given-names`, `family-names`, and `institution-name`. The institution filter matches any
-   affiliation the person has ever listed, so it narrows the list without confirming anyone.
-   For each remaining candidate, read the employment history and the works:
+   Records without a ROR ID on the affiliation are missed by that filter, so also try
+   `affiliation-org-name:%22Stanford+University%22` with the institution's full name and its
+   acronym. `num-found` is the number of matching records, and each result lists `orcid-id`,
+   `given-names`, `family-names`, and `institution-name`. Both filters match any affiliation
+   the person has ever listed (including an award or a past degree), so they narrow the list
+   without confirming anyone. For each remaining candidate, read the employment history and
+   the works:
 
    ```bash
    curl -s -H "Accept: application/json" "https://pub.orcid.org/v3.0/0000-0002-1825-0097/employments"
    curl -s -H "Accept: application/json" "https://pub.orcid.org/v3.0/0000-0002-1825-0097/works"
    ```
 
-   Employers are at `affiliation-group[].summaries[0].employment-summary.organization` (name
-   and address, with start and end dates beside it), and work titles are at
-   `group[].work-summary[0].title.title.value`. The record fits when it places the person at
-   the lab's institution around the time of the experiment, or lists the lab's papers.
+   Employers are at `affiliation-group[].summaries[0].employment-summary` (`organization`,
+   `department-name`, `role-title`, `start-date`, `end-date`), and work titles are at
+   `group[].work-summary[0].title.title.value`.
+
+   Accept the record when its works include the lab's papers. Sharing the employer is not
+   enough by itself: a large institution employs many people with the same name, so the
+   record must also fit the lab in some other way. That means the department or group is
+   the lab's, the dates cover the experiment (an undated entry does not show this), and
+   the works are in the lab's field. A record that shares only the employer goes to the
+   user as a candidate, not into the file.
 
 Search under the variants of the name as well (a short form of the given name, initials, a
 different transliteration, a former family name). If no record can be tied to the lab, ask
