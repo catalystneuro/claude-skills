@@ -1,11 +1,11 @@
-## Phase 7: Local Example Notebook
+## Phase 8: Local Example Notebook
 
 **Goal**: Create Jupyter notebooks that load and visualize the locally converted NWB data:
 one review notebook per data stream, so a reviewer can check each stream on its own, and one
 demo notebook with combined analyses that serves as a starting point for analysis. Both
 validate the conversion output before the data is uploaded to DANDI.
 
-**Entry**: Testing and validation are complete (Phase 6). At least one full NWB file has
+**Entry**: Testing and validation are complete (Phase 7). At least one full NWB file has
 been written to disk.
 
 **Exit criteria**: Tested `.ipynb` notebooks that run end-to-end loading local NWB files: one

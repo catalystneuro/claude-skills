@@ -2,7 +2,7 @@
 
 Used when the user chose the stacked PRs delivery mode. The conversion still runs end-to-end;
 the work is committed on a chain of branches so it can be opened as one pull request per data
-stream at the end of Phase 7. Requires git 2.38 or later (`--update-refs`) and `gh`
+stream at the end of Phase 8. Requires git 2.38 or later (`--update-refs`) and `gh`
 authenticated with push access to the conversion repo.
 
 ## Branches
@@ -24,11 +24,14 @@ main ← setup ← <reference_stream> ← <stream_2> ← ... ← <stream_n>
 **`setup`**: everything from Phases 1 to 4 (`conversion_notes.md`, collected metadata), plus
 the repo scaffold from Phase 5: `pyproject.toml`, `README.md`, `make_env.yml`, session-level
 `metadata.yaml` (NWBFile, Subject), the NWBConverter with no data interfaces yet,
-`convert_session.py` and `convert_all_sessions.py`.
+`convert_session.py` and `convert_all_sessions.py`. The ontology annotation helper from
+Phase 6 and the session-level terms in `external_resources.yaml` (species, strain,
+institution, experimenters) also go here.
 
 **Each stream branch**: that stream's interface code (or NeuroConv interface usage), its entry
-in the converter, its metadata, its alignment logic, its tests and fixes, and its review
-notebook from Phase 7. The combined demo notebook goes on the last branch.
+in the converter, its metadata, its brain-region and body-part terms in `external_resources.yaml`, its
+alignment logic, its tests and fixes, and its review
+notebook from Phase 8. The combined demo notebook goes on the last branch.
 
 ## Creating the branches
 
@@ -53,7 +56,7 @@ git push -u origin HEAD
 
 ## Changing a lower branch
 
-Testing (Phase 6) and notebooks (Phase 7) often touch a branch below the top of the stack.
+Testing (Phase 7) and notebooks (Phase 8) often touch a branch below the top of the stack.
 Commit on the branch the change belongs to, then carry it up to every branch above it:
 
 ```bash
@@ -68,7 +71,7 @@ git push --force-with-lease origin <every branch above <stream>>
 
 ## Opening the PRs
 
-At the end of Phase 7, push every branch and open the PRs from the bottom of the stack up,
+At the end of Phase 8, push every branch and open the PRs from the bottom of the stack up,
 each based on the branch below it:
 
 ```bash

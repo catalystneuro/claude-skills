@@ -1,11 +1,11 @@
-## Phase 9: DANDI Metadata
+## Phase 10: DANDI Metadata
 
 **Goal**: Fill in the Dandiset-level metadata so the Dandiset is citable, findable, and
 ready to publish: contributors with ORCIDs and ROR affiliations, a contact person, funders
 with award numbers, the associated publication and conversion code, subject terms, keywords,
 license, and ethics approval.
 
-**Entry**: The NWB files are uploaded to DANDI (Phase 8). The Dandiset ID and the DANDI
+**Entry**: The NWB files are uploaded to DANDI (Phase 9). The Dandiset ID and the DANDI
 instance (sandbox or archive) are known.
 
 **Exit criteria**: The draft metadata passes validation, or the only remaining errors are
@@ -51,6 +51,9 @@ Much of what the skill would otherwise ask for was collected in earlier phases. 
 - **Brain regions and species**: from Phase 3 and the electrode and imaging-plane locations.
   If regions differ by subject, the skill's `references/asset-metadata.md` covers setting
   them per file.
+- **Identifiers already looked up**: Phase 6 recorded ORCIDs for the experimenters, the
+  institution's ROR ID, and ontology terms for species and brain regions in
+  `external_resources.yaml`. Reuse them instead of looking them up again.
 - **Conversion code**: the conversion repo from Phase 5, as a related resource with relation
   `dcite:IsSupplementedBy` and resource type `dcite:Software`.
 - **Data curators**: the people who ran this conversion, with role `dcite:DataCurator` and
@@ -66,7 +69,7 @@ After saving, add a short section to `conversion_notes.md` listing what was fill
 anything left open (for example "contact email pending", "ethics protocol to confirm"),
 then commit it.
 
-After Phase 10, add the example notebook to the Dandiset's related resources through the
+After Phase 11, add the example notebook to the Dandiset's related resources through the
 same skill (relation `dcite:IsSupplementedBy`, resource type `dcite:ComputationalNotebook`).
 
 ### Publishing

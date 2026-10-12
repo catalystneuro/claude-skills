@@ -311,7 +311,7 @@ Record the absolute mount path for use in conversion code. For example, if the m
 is at `/home/user/source_data/`, all generated conversion scripts should reference
 that path (or accept it as a configurable argument).
 
-**Unmounting.** When the conversion is complete (after Phase 7 or when the user
+**Unmounting.** When the conversion is complete (after Phase 8 or when the user
 is done), unmount with:
 ```bash
 # macOS
