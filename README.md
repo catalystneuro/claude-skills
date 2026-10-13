@@ -59,7 +59,7 @@ Convert neurophysiology data to [NWB](https://www.nwb.org/) format and publish o
 3. **Metadata Collection** - Gather required NWB metadata (subject, session, devices, electrodes)
 4. **Synchronization** - Analyze and plan temporal alignment across data streams
 5. **Code Generation** - Generate a complete, pip-installable conversion repo using [NeuroConv](https://neuroconv.readthedocs.io/)
-6. **Ontology Annotation** - Link species, strain, brain regions, body parts, institution, and experimenters to ontologies and registries (NCBITaxon, RRID, Allen atlases, UBERON, ROR, ORCID) inside each file
+6. **Ontology Annotation** - Link species, strain, brain regions, body parts, institution, and experimenters to ontologies and registries (NCBITaxon, RRID, Allen atlases, UBERON, ROR, ORCID) inside each file. Also describe the values of categorical columns (trial outcomes, event codes) with a `MeaningsTable` and annotate them with HED.
 7. **Testing & Validation** - Run conversions, validate with NWB Inspector, fix issues iteratively
 8. **DANDI Upload** - Organize and upload validated NWB files to the DANDI Archive
 9. **DANDI Metadata** - Fill in authors, funding, publications, and subject terms with the `dandiset-metadata` skill

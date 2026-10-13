@@ -15,6 +15,7 @@ REPO = Path(os.environ.get("SKILL_REPO", Path(__file__).resolve().parents[2]))
 KNOWLEDGE = REPO / "nwb-convert/knowledge/external-resources.md"
 PHASE = REPO / "nwb-convert/phases/06-ontology-annotation.md"
 TESTING = REPO / "nwb-convert/phases/07-testing.md"
+MEANINGS = REPO / "nwb-convert/knowledge/value-meanings.md"
 
 
 def pytest_addoption(parser):
@@ -77,6 +78,44 @@ def package(tmp_path, doc, monkeypatch):
     )
     (package_path / "toy_nwbconverter.py").write_text(hook)
     (package_path / "interfaces.py").write_text((Path(__file__).parent / "toy_interfaces.py").read_text())
+    monkeypatch.syspath_prepend(str(tmp_path / "src"))
+    for name in [module for module in sys.modules if module.startswith("toy_lab_to_nwb")]:
+        del sys.modules[name]
+    return package_path
+
+
+@pytest.fixture(scope="session")
+def meanings_doc():
+    return dict(
+        helper=one(MEANINGS, "python", "def add_value_meanings"),
+        hook=one(MEANINGS, "python", "class <ConversionName>NWBConverter"),
+        listing=one(MEANINGS, "python", "without a meaning: {"),
+        search=one(MEANINGS, "python", "schema.tags.all_entries"),
+        validate=one(MEANINGS, "python", '"Experimental-trial, Aborted"'),
+        check=one(MEANINGS, "python", "values without a meaning:"),
+        phase_yaml=one(PHASE, "yaml", "hed_schema_version:"),
+        phase7=one(TESTING, "python", "# Check value meanings"),
+        phase7_with=one(TESTING, "python", 'with NWBHDF5IO("/path/to/output/session.nwb", "r") as io:'),
+    )
+
+
+@pytest.fixture()
+def meanings_package(tmp_path, doc, meanings_doc, monkeypatch):
+    """A conversion package holding both Phase 6 helpers and the hook that calls them, verbatim."""
+    package_path = tmp_path / "src" / "toy_lab_to_nwb" / "toy"
+    package_path.mkdir(parents=True)
+    (package_path.parent / "__init__.py").write_text("")
+    (package_path / "__init__.py").write_text("")
+    (package_path / "external_resources.py").write_text(doc["helper"])
+    (package_path / "external_resources.yaml").write_text(doc["phase_yaml"])
+    (package_path / "value_meanings.py").write_text(meanings_doc["helper"])
+    hook = meanings_doc["hook"].replace("<ConversionName>", "Toy")
+    hook = hook.replace(
+        "class ToyNWBConverter(NWBConverter):\n",
+        "from .interfaces import INTERFACES\n\n\nclass ToyNWBConverter(NWBConverter):\n    data_interface_classes = INTERFACES\n",
+    )
+    (package_path / "toy_nwbconverter.py").write_text(hook)
+    (package_path / "interfaces.py").write_text((Path(__file__).parent / "toy_table_interfaces.py").read_text())
     monkeypatch.syspath_prepend(str(tmp_path / "src"))
     for name in [module for module in sys.modules if module.startswith("toy_lab_to_nwb")]:
         del sys.modules[name]
