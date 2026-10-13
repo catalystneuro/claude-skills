@@ -9,7 +9,8 @@ reader or a tool can tell exactly what each one means.
 
 **Exit criteria**: `external_resources.yaml` lists a verified term for every value that has
 one, the user has confirmed the ones that were ambiguous, and the converter writes them into
-each file. Values with no suitable term are recorded in `conversion_notes.md`.
+each file. Values with no suitable term are recorded in `conversion_notes.md`. The same holds
+for `value_meanings.yaml` and the categorical columns it describes.
 
 The links are stored inside each NWB file under `/general/external_resources` using HERD
 (HDMF External Resources Data). Each reference ties a value as it is written in the file
@@ -21,6 +22,11 @@ is the reference for which registry to use and what goes in `entity_id` and `ent
 
 This phase adds references next to the existing values. It does not change what is written
 in `species`, `location`, or any other field.
+
+Steps 5 to 7 do the same for the categorical columns of the file's tables (trial outcomes,
+stimulus types, event codes): each value gets a written meaning, and where the vocabulary
+allows, a HED annotation. Those are stored in a `MeaningsTable` beside the column. See
+`knowledge/value-meanings.md`.
 
 ### Step 1: List the Values to Annotate
 
@@ -156,12 +162,106 @@ In stacked PRs mode, the helper, the hook in the converter, and the session-leve
 (species, strain, institution, experimenters) go on the `setup` branch. The brain-region
 and body-part terms for a stream go on that stream's branch.
 
+### Step 5: Write a Meaning for Each Categorical Value
+
+A column such as a trial `result` holding `R`, `A`, `I`, and `F` is unreadable without the
+task code. List the categorical columns of a stub file with the script in
+`knowledge/value-meanings.md` ("Listing the Categorical Columns in a File"), then write one
+sentence per value saying what it means.
+
+- The meanings come from the lab: the task code, the paper's methods, a lab wiki, or the
+  user. Do not work out what a code means from its letter or its column name. Expanding `A`
+  to "abort" restates the label. What made a trial an abort and not a fail is the meaning,
+  and only the lab knows it.
+- Cover every value the column can take, including ones this session never used.
+- Write each meaning so that a reader who has not seen the task can tell the values apart.
+- Skip identifiers, free text, counts, and columns that a registry already covers (a
+  `location` column has HERD references from Step 4).
+- Events written by a NeuroConv events interface take their meanings in that interface's
+  metadata (`event_description`, and `column_categories["meanings"]` for a value column).
+  Put them there. The helper in Step 7 leaves those meanings as they are and adds to them.
+
+Ask about the values you could not find a meaning for in one batch, showing what you have:
+
+> A few columns hold codes I'd like to describe in the file so that others can read them:
+>
+> 1. Trial `result` is `R`, `A`, `I`, or `F`. I take these to be reward, abort, incomplete,
+>    and fail. What ends a trial as an abort, as incomplete, and as a fail?
+> 2. Trial `ctr_hold_bump` is true or false. Does true mean the handle was bumped during the
+>    center hold, before the go cue?
+
+If the user does not know what a value means, leave the column out and note it in
+`conversion_notes.md`.
+
+### Step 6: Annotate the Values with HED
+
+HED (Hierarchical Event Descriptors) is a controlled vocabulary for events and experimental
+conditions. A HED string beside a meaning lets a tool find, across datasets, the trials that
+ended in a reward or the events that were a visual stimulus. Skip this step if `ndx-hed` is
+not installed and cannot be installed. The meanings stand on their own.
+
+For each value that describes what happened or under what condition:
+
+1. Search the schema for tags, using the script in `knowledge/value-meanings.md` ("Finding
+   HED Tags"). Do not write a tag from memory. A tag that is not in the schema is an error,
+   and one that is in the schema but means something else is worse.
+2. Write the string from the tags you found, following the conventions in the same file.
+3. Validate it with the script in "Validating HED Strings" and fix every error and warning.
+4. Read it back against the meaning. The validator checks that a string is well-formed,
+   not that it says what the meaning says.
+
+Annotate the meaning, not more. If the lab did not say what distinguishes an abort from a
+fail, the HED cannot say it either: give both the tags they share and tell them apart with
+`Label/Abort` and `Label/Fail`. Leave a value without HED when nothing in the vocabulary
+describes it. That is the usual case for bookkeeping, such as which data split a trial
+belongs to.
+
+The user is not expected to review HED strings. Confirm the meanings with them in Step 5,
+and record in `conversion_notes.md` that the HED was drafted from those meanings and checked
+by the validator, not reviewed by a HED expert.
+
+### Step 7: Record the Meanings and Wire Them into the Converter
+
+Write them to `value_meanings.yaml` next to `external_resources.yaml`, keyed by table name,
+then column name, then the value exactly as it is written in the file:
+
+```yaml
+hed_schema_version: "8.4.0"
+tables:
+  trials:
+    result:
+      R: {meaning: "The monkey reached the target and received a reward.", hed: "Experimental-trial, Correct-action, Reward"}
+      A: {meaning: "The monkey left the center before the go cue, ending the trial.", hed: "Experimental-trial, Incorrect-action, Label/Abort"}
+    ctr_hold_bump:
+      true: {meaning: "The handle was bumped during the center hold, before the go cue.", hed: "Condition-variable/Center-hold-bump, (Somatic-presentation, Experimental-stimulus)"}
+      false: {meaning: "The handle was not bumped during the center hold.", hed: "Condition-variable/No-center-hold-bump"}
+    split:
+      train: {meaning: "The trial is in the training split of the benchmark."}
+      val: {meaning: "The trial is in the validation split of the benchmark."}
+```
+
+`hed` is optional for each value, and `hed_schema_version` is only needed when some value has
+one. Use the schema version you searched and validated against. A boolean column is keyed by
+`true` and `false`, and an integer code by the bare number.
+
+Then add the helper from `knowledge/value-meanings.md` ("Writing the Meanings") to the
+conversion package and call it from the same `add_to_nwbfile` override that writes the HERD
+references. If any value has HED, add `ndx-hed` to the dependencies in `pyproject.toml`,
+using the install line from the knowledge file.
+
+Add to `conversion_notes.md` which columns were described, which values have HED, and which
+were left out and why.
+
+In stacked PRs mode, the helper and the hook go on the `setup` branch with an empty
+`tables` map, and each stream's branch adds the entries for the tables that stream writes.
+
 ### Push Phase 6 Results
 
 ```bash
-git add conversion_notes.md src/
-git commit -m "Phase 6: ontology annotation with HERD references"
+git add conversion_notes.md src/ pyproject.toml
+git commit -m "Phase 6: ontology annotation with HERD references, value meanings, and HED"
 if git remote get-url origin &>/dev/null; then git push; fi
 ```
 
-Phase 7 checks that the references were written when it inspects the stub file.
+Phase 7 checks that the references and the meanings were written when it inspects the stub
+file.
