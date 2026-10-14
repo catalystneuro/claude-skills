@@ -163,6 +163,13 @@ available — some NWB is better than no NWB. Document the data provenance in
 - **Suite2p** — look for the `suite2p/plane0/` directory structure
 - **Multiple probes** — SpikeGLX uses imec0, imec1, etc.; each needs its own interface instance
 
+### Damaged or Incomplete Sessions
+
+If a session's data looks damaged or incomplete (a file that won't open or reads only partway, a recording
+that stops early, streams that stop agreeing partway through the session), record the session and what you
+saw in `conversion_notes.md`, then ask the user how to handle it before converting it. Do the same if you find
+one in a later phase. Don't decide on your own to keep or drop the affected data.
+
 ### Update conversion_notes.md
 
 Add an "Interface Mapping" section:
