@@ -220,7 +220,7 @@ def test_check_script(meanings_package, meanings_doc, tmp_path):
     out = run(meanings_doc["check"].replace("/path/to/output/session.nwb", str(path)), tmp_path)
     assert "trials/result values without a meaning: []" in out
     assert "trials/ctr_hold_bump values without a meaning: []" in out
-    assert "HED strings: 6, with issues: 0" in out
+    assert "HED issues: 0" in out
 
 
 def test_check_script_reports_undescribed_values_and_invalid_hed(meanings_package, meanings_doc, tmp_path):
@@ -231,14 +231,25 @@ def test_check_script_reports_undescribed_values_and_invalid_hed(meanings_packag
     path = convert(meanings_package, tmp_path)
     out = run(meanings_doc["check"].replace("/path/to/output/session.nwb", str(path)), tmp_path)
     assert "trials/result values without a meaning: ['A']" in out
-    assert "TAG_INVALID" in out and "with issues: 1" in out
+    assert "TAG_INVALID" in out and "HED issues: 1" in out
+
+
+def test_check_script_reports_a_tag_repeated_across_columns(meanings_package, meanings_doc, tmp_path):
+    """Each string is valid, but a bumped trial's row combines "Experimental-trial" from two columns."""
+    annotations = write_annotations(meanings_package, meanings_doc)
+    bumped = annotations["tables"]["trials"]["ctr_hold_bump"][True]
+    bumped["hed"] = "Experimental-trial, " + bumped["hed"]
+    (meanings_package / "value_meanings.yaml").write_text(yaml.safe_dump(annotations))
+    path = convert(meanings_package, tmp_path)
+    out = run(meanings_doc["check"].replace("/path/to/output/session.nwb", str(path)), tmp_path)
+    assert "TAG_EXPRESSION_REPEATED" in out and "HED issues: 0" not in out
 
 
 def test_check_script_without_hed(meanings_package, meanings_doc, tmp_path):
     write_annotations(meanings_package, meanings_doc, strip_hed=True)
     path = convert(meanings_package, tmp_path)
     out = run(meanings_doc["check"].replace("/path/to/output/session.nwb", str(path)), tmp_path)
-    assert "trials/split values without a meaning: []" in out and "HED strings" not in out
+    assert "trials/split values without a meaning: []" in out and "HED issues" not in out
 
 
 def test_phase7_snippet_inside_with_block(meanings_package, meanings_doc, tmp_path, capsys):
@@ -248,18 +259,3 @@ def test_phase7_snippet_inside_with_block(meanings_package, meanings_doc, tmp_pa
     exec(with_block + "\n" + meanings_doc["phase7"], {})
     out = capsys.readouterr().out
     assert "trials/result" in out and "Experimental-trial, Correct-action, Reward" in out
-
-
-def test_ndx_hed_file_validation_as_the_knowledge_file_describes(meanings_package, meanings_doc, tmp_path):
-    """The knowledge file says validate_file raises TypeError for an annotated boolean column read from a
-    file. When ndx-hed fixes that, this fails, and the check script should move to validate_file."""
-    from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
-
-    write_annotations(meanings_package, meanings_doc)
-    path = convert(meanings_package, tmp_path)
-    with NWBHDF5IO(str(path), "r") as io:
-        nwbfile = io.read()
-        validator = HedNWBValidator(nwbfile.lab_meta_data["hed_schema"])
-        assert validator.validate_table(nwbfile.events["TaskEvents"]) == []  # strings only: validates
-        with pytest.raises(TypeError, match="keys must be str"):
-            validator.validate_file(nwbfile)

@@ -38,9 +38,7 @@ boolean, integer, numeric, and free-text columns and an events table that alread
 - the statements the knowledge file makes about the HED schema and about `ndx-hed`
 - PyNWB validation of an annotated file
 
-These are skipped when `ndx-hed` is not installed. One of them asserts a current `ndx-hed`
-bug (`validate_file` raises `TypeError` for an annotated boolean column read from a file).
-When that is fixed the test fails, and the checking script should move to `validate_file`.
+These are skipped when `ndx-hed` is not installed.
 
 `test_lookups.py` runs every `curl` command in the knowledge file against the live
 registries, checks the facts the text states about their results, and checks that every URL

@@ -17,12 +17,11 @@ Background reading:
 - HED schema browser: https://www.hedtags.org/hed-schema-browser
 - ndx-hed: https://www.hedtags.org/ndx-hed
 
-The meanings need nothing beyond PyNWB. The HED part needs `ndx-hed`, and the release that
-supports `pynwb>=4` is not on PyPI yet (https://github.com/hed-standard/ndx-hed/issues/194),
-so until then it is installed from GitHub:
+The meanings need nothing beyond PyNWB. The HED part needs `ndx-hed` 0.3.0 or later, the
+first release that supports `pynwb>=4`:
 
 ```bash
-pip install "ndx-hed @ git+https://github.com/hed-standard/ndx-hed.git@main"
+pip install "ndx-hed>=0.3.0"
 ```
 
 If it cannot be installed (for example in NWB GUIDE, where the packages are bundled), write
@@ -230,17 +229,23 @@ How the helper behaves:
 
 ## Checking a Written File
 
-Prints each `MeaningsTable` in the file, the values in its column that it does not describe,
-and the result of validating its HED:
+Prints each `MeaningsTable` in the file and the values in its column that it does not describe,
+then validates all the HED in the file:
 
 ```python
 import numpy as np
 from hdmf.common import MeaningsTable
 from pynwb import NWBHDF5IO
 
+try:
+    # Imported before the file is read, so that its HED objects are read as the ndx-hed classes
+    from hed.errors import ErrorHandler, get_printable_issue_string
+    from ndx_hed.utils.hed_nwb_validator import HedNWBValidator
+except ImportError:
+    HedNWBValidator = None
+
 with NWBHDF5IO("/path/to/output/session.nwb", "r") as io:
     nwbfile = io.read()
-    hed_strings = {}
     for meanings_table in nwbfile.all_children():
         if not isinstance(meanings_table, MeaningsTable):
             continue
@@ -249,36 +254,22 @@ with NWBHDF5IO("/path/to/output/session.nwb", "r") as io:
         described = meanings_table["value"].data[:].tolist()
         in_file = sorted(set(np.asarray(meanings_table.target.data[:]).tolist()))
         print(f"{label} values without a meaning:", [value for value in in_file if value not in described])
-        if "HED" in meanings_table.colnames:
-            for value, hed_string in zip(described, meanings_table["HED"].data[:]):
-                if hed_string:
-                    hed_strings[f"{label} = {value}"] = hed_string
-    hed_metadata = nwbfile.lab_meta_data.get("hed_schema")
-    hed_schema_version = None if hed_metadata is None else hed_metadata.hed_schema_version
 
-if hed_strings:
-    from hed import HedString, load_schema_version
-    from hed.errors import ErrorHandler, get_printable_issue_string
-    from hed.validator import HedValidator
-
-    schema = load_schema_version(hed_schema_version)
-    validator = HedValidator(schema)
-    invalid = 0
-    for label, hed_string in hed_strings.items():
-        issues = validator.validate(
-            HedString(hed_string, schema), allow_placeholders=False, error_handler=ErrorHandler(check_for_warnings=True)
-        )
+    if "hed_schema" in nwbfile.lab_meta_data and HedNWBValidator is None:
+        print("The file has HED, but ndx-hed is not installed, so it was not validated.")
+    elif "hed_schema" in nwbfile.lab_meta_data:
+        validator = HedNWBValidator(nwbfile.lab_meta_data["hed_schema"])
+        issues = validator.validate_file(nwbfile, ErrorHandler(check_for_warnings=True))
         if issues:
-            invalid += 1
-            print(f"{label}: {hed_string}\n{get_printable_issue_string(issues)}")
-    print(f"HED strings: {len(hed_strings)}, with issues: {invalid}")
+            print(get_printable_issue_string(issues))
+        print(f"HED issues: {len(issues)}")
 ```
 
 A value listed as without a meaning is either missing from `value_meanings.yaml` or written
 there with a different type or spelling than in the file. A fill value such as an empty
 string, which NeuroConv writes where a row has nothing for a column, needs no meaning.
 
-`ndx-hed` also has `HedNWBValidator.validate_file`, which assembles the annotations of each
-row before validating them and so also catches a tag repeated across two columns of one
-table. With the current `ndx-hed` it raises `TypeError` when an annotated column read from a
-file holds booleans or integers, so the check above validates each string on its own.
+`validate_file` checks every table that has HED. It validates the HED of each value, then
+combines the HED of each row from all of its columns and validates that too, which catches a
+tag repeated in two columns of one row. It works in stages and stops at the first stage with
+an error, so after fixing the reported issues, run the check again until it reports none.

@@ -4,8 +4,7 @@ roiextractors
 ndx-pose
 ndx-fiber-photometry
 nwbinspector
-# The ndx-hed release that supports pynwb>=4 is not on PyPI yet (hed-standard/ndx-hed#194)
-ndx-hed @ git+https://github.com/hed-standard/ndx-hed.git@main
+ndx-hed>=0.3.0
 dandi
 pyyaml
 pytest
