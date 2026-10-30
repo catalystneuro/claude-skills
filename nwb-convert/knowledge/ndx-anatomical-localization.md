@@ -10,39 +10,35 @@ against reference atlases (e.g., Allen CCFv3).
 uv pip install ndx-anatomical-localization
 ```
 
-Dependencies: `pynwb>=2.8.0`, `hdmf>=3.14.1`, Python >= 3.10
-
 ## Overview
-
-The extension defines 5 types:
 
 | Type | Purpose |
 |------|---------|
-| `Space` | Custom coordinate system (origin, units, orientation) |
-| `AllenCCFv3Space` | Pre-configured Allen Mouse Brain CCFv3 space |
-| `AnatomicalCoordinatesTable` | 3D coordinates for point entities (electrodes) |
-| `AnatomicalCoordinatesImage` | Pixel-to-coordinate mapping for imaging planes |
-| `Localization` | LabMetaData container grouping all localization data |
+| `Localization` | LabMetaData container (fixed name `localization`) |
+| `Space` | Custom coordinate system (origin, units, orientation, optional extent) |
+| `AllenCCFv3Space` | Allen Mouse Brain CCFv3 (PIR, um) |
+| `D99v2Space`, `NMTv2Space`, `NMTv2AsymmetricSpace`, `MEBRAINSSpace` | Macaque atlases (RAS, mm) |
+| `AnatomicalCoordinatesTable` | Coordinates for rows of another table (e.g., electrodes) |
+| `AnatomicalCoordinatesImage` | Per-pixel coordinates for a reference image of an imaging series or histology |
+| `BrainRegionMasks` | Per-pixel atlas region IDs (`x`, `y`, `brain_region_id`) |
+| `AtlasRegistration` (with `Landmarks`, `AffineTransformation`) | LabMetaData recording how a FOV was registered to an atlas |
+
+Use a predefined atlas space when one matches; define a custom `Space` only for other coordinate systems.
 
 ## AllenCCFv3Space
-
-Pre-configured coordinate system for the Allen Mouse Brain Common Coordinate Framework v3:
 
 ```python
 from ndx_anatomical_localization import AllenCCFv3Space
 
 ccf_space = AllenCCFv3Space()
-# Fixed properties:
-#   orientation: "PIR" (positive x=Posterior, y=Inferior, z=Right)
-#   units: "um"
-#   origin: "Anterior-Superior-Left corner of the 3D image volume"
-#   extent: [13200.0, 8000.0, 11400.0] um (AP × DV × ML)
-#   resolution: 10 um isotropic
+# Fixed: orientation "PIR" (+x posterior, +y inferior, +z right), units "um", origin at the ASL corner of the volume.
 ```
+
+Bregma is approximately at (5400, 0, 5700) um in CCFv3 coordinates.
 
 ## Custom Space
 
-For non-Allen atlases or custom coordinate systems:
+For coordinate systems without a predefined space (e.g., bregma-relative):
 
 ```python
 from ndx_anatomical_localization import Space
@@ -119,49 +115,34 @@ for electrode_id in [0, 2, 5, 8]:  # only 4 of 16 electrodes
     )
 ```
 
-## Imaging Plane Registration (AnatomicalCoordinatesImage)
+## Imaging Field of View Registration (AnatomicalCoordinatesImage)
 
-For registering a 2D imaging field of view to atlas coordinates:
+Maps each pixel of a reference image (e.g., the mean projection of an imaging series, or a
+histology section) to atlas coordinates. The `Image` must itself be added to the file, for example
+inside an `Images` container.
 
 ```python
+from pynwb.base import Images
+from pynwb.image import GrayscaleImage
 from ndx_anatomical_localization import AnatomicalCoordinatesImage
-import numpy as np
+
+mean_image = GrayscaleImage(name="mean_image", data=mean_projection, description="Mean projection of the FOV")
+nwbfile.add_acquisition(Images(name="reference_images", images=[mean_image], description="Registration reference images"))
 
 image_coords = AnatomicalCoordinatesImage(
     name="ImagingPlaneLocalization",
-    imaging_plane=nwbfile.imaging_planes["ImagingPlane"],
+    description="FOV registered to Allen CCFv3",
+    image=mean_image,                      # required: the image the coordinate map is defined on
+    localized_entity=two_photon_series,    # optional: OnePhotonSeries or TwoPhotonSeries the map applies to
     method="manual registration",
     space=ccf_space,
-    x=x_grid,                          # shape: (height, width)
-    y=y_grid,                          # shape: (height, width)
-    z=z_grid,                          # shape: (height, width)
-    brain_region=region_labels,         # optional, shape: (height, width)
+    x=x_grid, y=y_grid, z=z_grid,          # same shape as mean_image.data
+    brain_region=region_labels,            # optional, same shape
 )
-
 localization.add_anatomical_coordinates_images([image_coords])
 ```
 
-For static images (e.g., histology) use `image=` instead of `imaging_plane=`:
-
-```python
-from pynwb.image import GrayscaleImage
-
-histology_img = GrayscaleImage(
-    name="histology_slice",
-    data=slice_data,
-    description="Nissl-stained coronal section",
-)
-
-image_coords = AnatomicalCoordinatesImage(
-    name="HistologyLocalization",
-    image=histology_img,               # use image= instead of imaging_plane=
-    method="manual registration to CCF",
-    space=ccf_space,
-    x=x_coords, y=y_coords, z=z_coords,
-)
-```
-
-**Constraint:** Exactly one of `image` or `imaging_plane` must be provided.
+For histology, omit `localized_entity`.
 
 ## Multiple Localizations
 
@@ -180,6 +161,7 @@ localization.add_spaces([ccf_space, bregma_space])
 manual = AnatomicalCoordinatesTable(
     name="ManualLocalization",
     target=nwbfile.electrodes,
+    description="Manual bregma-relative electrode locations",
     method="manual annotation",
     space=bregma_space,
 )
@@ -188,6 +170,7 @@ manual = AnatomicalCoordinatesTable(
 automated = AnatomicalCoordinatesTable(
     name="SHARPTrackLocalization",
     target=nwbfile.electrodes,
+    description="SHARP-Track CCF electrode locations",
     method="SHARP-Track 2.0",
     space=ccf_space,
 )
@@ -216,12 +199,6 @@ with NWBHDF5IO("data.nwb", "r", load_namespaces=True) as io:
 
 ## Notes
 
-- The `Localization` container is added via `nwbfile.add_lab_meta_data([localization])`.
-- `AllenCCFv3Space` uses **PIR** orientation: +x=Posterior, +y=Inferior, +z=Right.
-  Bregma is approximately at (5400, 0, 5700) um in CCFv3 coordinates.
 - `method` should describe the registration tool/approach (e.g., "SHARP-Track 1.0",
   "manual annotation", "Pinpoint", "brainreg").
 - `brain_region` is optional but recommended — use Allen Brain Atlas ontology terms.
-- For `AnatomicalCoordinatesImage`, coordinate arrays must match the image dimensions.
-- This extension is currently v0.1.0 (beta) but is the recommended way to store
-  anatomical localization data in NWB files.
