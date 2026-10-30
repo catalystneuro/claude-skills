@@ -1,21 +1,23 @@
 # Pose Estimation — ndx-pose Patterns
 
-Construction patterns using the `ndx-pose` extension (v0.2.2+).
+Construction patterns for `ndx-pose` 0.4.x (requires pynwb>=4).
 Use this for pose estimation data from DeepLabCut, SLEAP, Lightning Pose, etc.
 
 ## Installation
 
 ```bash
-uv pip install ndx-pose
+uv pip install "ndx-pose>=0.4.0"
 ```
 
 ## Overview
 
 The extension defines:
-- **Skeleton** — body part nodes and their connections (edges)
-- **PoseEstimationSeries** — per-keypoint x,y(,z) positions + confidence over time
-- **PoseEstimation** — container grouping all keypoints from one video/algorithm
-- **PoseTraining** — optional training data (annotated frames, ground truth)
+- **Skeleton**: body part nodes and their connections (edges)
+- **PoseEstimationSeries**: per-keypoint x,y(,z) positions + confidence over time
+- **PoseEstimation**: container grouping all keypoints from one camera view
+- **MultiCameraPoseEstimation**: 3D world-space keypoints plus one `PoseEstimation` per camera
+- **CalibratedCamera**: a `Device` with camera intrinsics and extrinsics
+- **PoseTraining**: optional training data (annotated frames, ground truth)
 
 ## NeuroConv Integration
 
@@ -27,166 +29,128 @@ NeuroConv has built-in interfaces for the major pose estimation tools:
 **Prefer NeuroConv interfaces when available.** Only use raw ndx-pose construction
 when data is in a custom format not supported by NeuroConv.
 
-## Skeleton Definition
+## Complete Example
 
 ```python
-from ndx_pose import Skeleton, Skeletons
 import numpy as np
+from ndx_pose import Skeleton, Skeletons, PoseEstimationSeries, PoseEstimation
+from neuroconv.tools.nwb_helpers import get_module
+from pynwb.device import DeviceModel
+from pynwb.image import ImageSeries
 
+# 1. Camera and source video. The device must be in the NWBFile before PoseEstimation links it.
+camera_model = DeviceModel(
+    name="acA1300",
+    manufacturer="Basler",
+    model_number="acA1300-200um",
+    description="Basler ace USB 3.0 monochrome camera",
+)
+nwbfile.add_device_model(camera_model)
+camera = nwbfile.create_device(name="BehaviorCamera", description="Side-view camera", model=camera_model)
+
+n_frames = 1000
+video = ImageSeries(
+    name="BehaviorVideo",
+    description="Raw behavior video",
+    unit="n.a.",
+    format="external",
+    external_file=["behavior_video.mp4"],  # path relative to the NWB file
+    starting_frame=[0],
+    rate=30.0,
+    num_samples=n_frames,
+    dimension=[640, 480],                  # width, height in pixels
+    device=camera,
+)
+nwbfile.add_acquisition(video)
+
+# 2. Skeleton: node order defines the indices used in edges (Nx2 uint8, 0-indexed)
 skeleton = Skeleton(
     name="mouse_skeleton",
-    nodes=["nose", "left_ear", "right_ear", "neck", "body", "tail_base"],
-    edges=np.array([
-        [0, 3],  # nose → neck
-        [1, 3],  # left_ear → neck
-        [2, 3],  # right_ear → neck
-        [3, 4],  # neck → body
-        [4, 5],  # body → tail_base
-    ], dtype="uint8"),
+    nodes=["nose", "body", "tail_base"],
+    edges=np.array([[0, 1], [1, 2]], dtype="uint8"),
     subject=nwbfile.subject,  # optional
 )
 
-skeletons = Skeletons(skeletons=[skeleton])
-```
-
-- `nodes`: list of body part names (order matters — indices used in edges)
-- `edges`: Nx2 uint8 array of 0-indexed node pairs
-
-## PoseEstimationSeries — Per-Keypoint Data
-
-```python
-from ndx_pose import PoseEstimationSeries
-
-nose = PoseEstimationSeries(
-    name="nose",
-    description="Nose keypoint tracked by DeepLabCut",
-    data=nose_xy,                    # shape: (n_frames, 2) for 2D or (n_frames, 3) for 3D
-    unit="pixels",
-    reference_frame="(0,0) is top-left corner of video frame",
-    timestamps=timestamps,           # or rate=30.0
-    confidence=confidence_scores,    # shape: (n_frames,), values 0-1, optional
-    confidence_definition="Softmax output of DeepLabCut network",
-)
-
-# Share timestamps across keypoints to save space
-left_ear = PoseEstimationSeries(
-    name="left_ear",
-    description="Left ear keypoint",
-    data=left_ear_xy,
-    unit="pixels",
-    reference_frame="(0,0) is top-left corner of video frame",
-    timestamps=nose,                 # reference another series' timestamps
-    confidence=left_ear_confidence,
-    confidence_definition="Softmax output of DeepLabCut network",
-)
-```
-
-## PoseEstimation — Container
-
-```python
-from ndx_pose import PoseEstimation
-from neuroconv.tools.nwb_helpers import get_module
-
-camera = nwbfile.create_device(
-    name="BehaviorCamera",
-    description="Side-view camera for pose tracking",
-    manufacturer="Basler",
-)
-
-pose_estimation = PoseEstimation(
-    name="PoseEstimation",
-    pose_estimation_series=[nose, left_ear, right_ear, neck, body, tail_base],
-    description="Pose estimation of freely moving mouse",
-    original_videos=["behavior_video.mp4"],
-    labeled_videos=["behavior_video_labeled.mp4"],       # optional
-    dimensions=np.array([[640, 480]], dtype="uint16"),    # optional: height, width
-    devices=[camera],                                     # optional
-    scorer="DLC_resnet50_openfieldOct30shuffle1_1600",   # optional
-    source_software="DeepLabCut",                         # optional
-    source_software_version="2.3.8",                      # optional
-    skeleton=skeleton,                                    # optional but recommended
-)
-
-behavior = get_module(nwbfile, "behavior", "Processed behavioral data")
-behavior.add(skeletons)
-behavior.add(pose_estimation)
-```
-
-## Complete Minimal Example
-
-```python
-import numpy as np
-from ndx_pose import (
-    Skeleton, Skeletons,
-    PoseEstimationSeries, PoseEstimation,
-)
-from neuroconv.tools.nwb_helpers import get_module
-
-# 1. Define skeleton
-skeleton = Skeleton(
-    name="mouse",
-    nodes=["nose", "body", "tail"],
-    edges=np.array([[0, 1], [1, 2]], dtype="uint8"),
-)
-
-# 2. Create series for each keypoint
-n_frames = 1000
-timestamps = np.linspace(0, 33.3, n_frames)  # 30 fps for ~33s
-
+# 3. One PoseEstimationSeries per keypoint; later series reuse the first one's timestamps
 series_list = []
 for node in skeleton.nodes:
-    s = PoseEstimationSeries(
-        name=node,
-        description=f"Position of {node}",
-        data=np.random.rand(n_frames, 2) * 512,
-        unit="pixels",
-        reference_frame="Top-left corner of 512x512 video",
-        timestamps=timestamps if not series_list else series_list[0],
-        confidence=np.random.rand(n_frames),
-        confidence_definition="DLC likelihood",
+    series_list.append(
+        PoseEstimationSeries(
+            name=node,
+            description=f"Position of {node} tracked by DeepLabCut",
+            data=xy[node],                 # (n_frames, 2) for 2D or (n_frames, 3) for 3D
+            unit="pixels",
+            reference_frame="(0,0) is the top-left corner of the video frame",
+            timestamps=frame_timestamps if not series_list else series_list[0],  # measured frame times (s)
+            confidence=likelihood[node],   # (n_frames,), optional
+            confidence_definition="DeepLabCut likelihood",
+        )
     )
-    series_list.append(s)
 
-# 3. Create container
-pose_est = PoseEstimation(
+# 4. Container for one camera view
+pose_estimation = PoseEstimation(
     name="PoseEstimation",
     pose_estimation_series=series_list,
-    description="DeepLabCut pose estimation",
+    description="Pose estimation of freely moving mouse",
+    device=camera,
+    source_video=video,                    # optional; labeled_video= links an ImageSeries of the labeled video
+    scorer="DLC_resnet50_openfieldOct30shuffle1_1600",
     source_software="DeepLabCut",
+    source_software_version="2.3.8",       # requires source_software
     skeleton=skeleton,
 )
 
-# 4. Add to NWB file
-behavior = get_module(nwbfile, "behavior", "Behavioral data")
+behavior = get_module(nwbfile, "behavior", "Processed behavioral data")
 behavior.add(Skeletons(skeletons=[skeleton]))
-behavior.add(pose_est)
+behavior.add(pose_estimation)
 ```
 
 ## Multi-Camera / Multi-View
 
-For multi-camera setups, create separate `PoseEstimation` containers per view:
+For independent 2D tracking in each view, create one `PoseEstimation` per camera, each with its
+own `device=` and `source_video=`, and give them distinct names (e.g. `PoseEstimation_side`, `PoseEstimation_top`).
+
+For triangulated 3D poses (Anipose, DANNCE), use `MultiCameraPoseEstimation`. It holds the
+world-space `PoseEstimationSeries` and one `PoseEstimation` per camera view, which links that
+camera's device and video and may hold its 2D keypoints. Store each camera's calibration in a
+`CalibratedCamera` device.
 
 ```python
-pose_side = PoseEstimation(
-    name="PoseEstimation_side",
-    pose_estimation_series=side_series,
-    description="Side camera pose estimation",
-    devices=[side_camera],
-    skeleton=skeleton,
-    source_software="DeepLabCut",
-)
+from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation
 
-pose_top = PoseEstimation(
-    name="PoseEstimation_top",
-    pose_estimation_series=top_series,
-    description="Top camera pose estimation",
-    devices=[top_camera],
-    skeleton=skeleton,
-    source_software="DeepLabCut",
-)
+per_camera = []
+for camera_name, video in zip(["camera1", "camera2"], [video1, video2]):
+    camera = CalibratedCamera(
+        name=camera_name,
+        description=f"{camera_name} of the calibrated rig",
+        model=camera_model,
+        intrinsic_matrix=intrinsics[camera_name],         # (3, 3)
+        rotation_matrix=rotations[camera_name],           # (3, 3), optional
+        translation_vector=translations[camera_name],     # (3,), optional
+        distortion_coefficients=distortions[camera_name], # (N,), optional
+    )
+    nwbfile.add_device(camera)
+    per_camera.append(
+        PoseEstimation(
+            name=f"PoseEstimation_{camera_name}",
+            description=f"2D keypoints from {camera_name}",
+            pose_estimation_series=series_2d[camera_name],  # omit if the tool outputs no 2D keypoints
+            device=camera,
+            source_video=video,
+            skeleton=skeleton,
+        )
+    )
 
-behavior.add(pose_side)
-behavior.add(pose_top)
+multi_camera = MultiCameraPoseEstimation(
+    name="MultiCameraPoseEstimation",
+    pose_estimation_series=series_3d,  # (n_frames, 3) world-space PoseEstimationSeries, e.g. unit="millimeters"
+    pose_estimations=per_camera,
+    description="3D keypoints triangulated by Anipose",
+    source_software="Anipose",
+    source_software_version="1.1.4",
+    skeleton=skeleton,
+)
+behavior.add(multi_camera)
 ```
 
 ## Notes
@@ -195,8 +159,5 @@ behavior.add(pose_top)
 - `confidence` is optional (since v0.2.0) but recommended when available.
 - `unit` is typically `"pixels"` for 2D video tracking. Use `"meters"` if coordinates
   have been calibrated to real-world units.
-- Share timestamps across keypoints by passing a reference to another series.
-- `source_software` should be one of: `"DeepLabCut"`, `"SLEAP"`, `"Lightning Pose"`,
-  or the actual software name.
 - Training data (`PoseTraining`) is rarely needed in conversion workflows — it's mainly
   for sharing annotated datasets used to train models.
