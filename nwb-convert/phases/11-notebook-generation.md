@@ -309,18 +309,15 @@ source notebook-env/bin/activate
 uv pip install -r example-notebooks/<dandiset_id>/<lab_name>/<mnemonic>/requirements.in jupyter
 export JUPYTER_PREFER_ENV_PATH=1
 cd example-notebooks/<dandiset_id>/<lab_name>/<mnemonic>
-jupyter execute <dandiset_id>_demo.ipynb --timeout=600
+jupyter execute --inplace --timeout=600 <dandiset_id>_demo.ipynb
 ```
 
-Or test with `nbconvert`:
-
-```bash
-jupyter nbconvert --to notebook --execute <dandiset_id>_demo.ipynb --output executed.ipynb
-```
+`--inplace` saves the outputs into the notebook, so you can read them and they render on
+GitHub after submission. The lock script in Step 5 keeps them.
 
 Verify:
 1. All cells execute without errors
-2. All plots render correctly (read the output notebook images)
+2. All plots render correctly (read the images in the notebook's outputs)
 3. Streaming access works (no local file dependencies)
 4. The notebook completes in a reasonable time (< 5 minutes for streaming)
 5. The notebook runs headlessly: no `%matplotlib widget` or other interactive backend,
