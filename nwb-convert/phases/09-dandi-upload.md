@@ -20,20 +20,19 @@
 >
 > Which would you prefer?
 
-Use separate environment variables for each instance so both can coexist:
-- **Sandbox**: `DANDI_SANDBOX_API_KEY` — key from https://sandbox.dandiarchive.org
-- **Production**: `DANDI_API_KEY` — key from https://dandiarchive.org
+Keys go in two environment variables, which `dandi`, `DandiAPIClient.dandi_authenticate()`, and
+NeuroConv's `automatic_dandi_upload` pick by instance:
+- `DANDI_API_KEY` for dandiarchive.org
+- `DANDI_SANDBOX_API_KEY` for sandbox.dandiarchive.org
 
-When running commands, set `DANDI_API_KEY` to the appropriate value:
+To get a key, sign in on the chosen instance, click your initials, and copy the API key. The user
+exports it in their own shell:
 ```bash
-# For sandbox operations:
-export DANDI_API_KEY=$DANDI_SANDBOX_API_KEY
-
-# For production operations:
-# DANDI_API_KEY is already set (or export DANDI_API_KEY=<production-key>)
+export DANDI_SANDBOX_API_KEY=<your-sandbox-key>   # sandbox
+export DANDI_API_KEY=<your-production-key>        # production
 ```
 
-For sandbox uploads, add `-i dandi-sandbox` to all `dandi` CLI commands.
+For the sandbox, use `DANDI-SANDBOX:<id>` in `dandi download` and `-i dandi-sandbox` in `dandi upload`.
 
 ### Prerequisites
 
@@ -50,33 +49,20 @@ Create a Dandiset programmatically using the DANDI API:
 ```python
 from dandi.dandiapi import DandiAPIClient
 
-# For sandbox:
-client = DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
-# For production:
-# client = DandiAPIClient()  # uses default https://api.dandiarchive.org/api
-
-client.dandi_authenticate()
-
+client = DandiAPIClient.for_dandi_instance("dandi-sandbox", authenticate=True)  # or "dandi"
 dandiset = client.create_dandiset(
     name="Descriptive title for your dataset",
     metadata={
-        "schemaKey": "Dandiset",
-        "schemaVersion": "0.7.0",
         "name": "Descriptive title for your dataset",
         "description": "Abstract or summary of the dataset",
-        "license": ["spdx:CC-BY-4.0"],
-        "access": [{"schemaKey": "AccessRequirements", "status": "dandi:OpenAccess"}],
-        "contributor": [{
-            "schemaKey": "Person",
-            "name": "Last, First",
-            "roleName": ["dcite:ContactPerson"],
-            "includeInCitation": True,
-        }],
     },
+    embargo=False,  # True keeps the data private until released
 )
 dandiset_id = dandiset.identifier
 print(f"Created Dandiset: {dandiset_id}")
 ```
+
+Contributors, license, and the rest of the Dandiset metadata are filled in Phase 10.
 
 Alternatively, guide the user through creating one manually on the web:
 > 1. Go to https://dandiarchive.org (or https://sandbox.dandiarchive.org for sandbox)
@@ -84,32 +70,10 @@ Alternatively, guide the user through creating one manually on the web:
 > 3. Fill in: Name, Description, License (CC-BY-4.0), Contributors
 > 4. Note the 6-digit Dandiset ID (e.g., "000123")
 
-If the data should be embargoed (not publicly visible yet):
-> If your data needs to be embargoed (e.g., pending publication), select the
-> embargo option when creating the Dandiset. Embargoed data is only visible
-> to Dandiset owners until you release it.
+Pass `embargo=True` (or tick Embargo in the web form) if the data must stay private until
+publication. Embargoed data is only visible to Dandiset owners until you release it.
 
-### Step 2: Set Up API Keys
-
-Ask the user to set their API key(s) as labeled environment variables:
-
-```bash
-# Sandbox key (from https://sandbox.dandiarchive.org → initials → API Key)
-export DANDI_SANDBOX_API_KEY=<your-sandbox-key>
-
-# Production key (from https://dandiarchive.org → initials → API Key)
-export DANDI_API_KEY=<your-production-key>
-```
-
-Before running any `dandi` CLI commands, set `DANDI_API_KEY` to the correct key:
-```bash
-# For sandbox operations:
-export DANDI_API_KEY=$DANDI_SANDBOX_API_KEY
-```
-
-For Python API calls, pass the key explicitly via `DandiAPIClient` (see examples below).
-
-### Step 3: Validate Before Upload
+### Step 2: Validate Before Upload
 
 Run `dandi validate` on the NWB files before uploading:
 
@@ -124,25 +88,21 @@ This checks for DANDI-specific requirements beyond what nwbinspector catches:
 
 Fix any validation errors before proceeding.
 
-### Step 4: Upload Using NeuroConv Helper (Recommended)
+### Step 3: Upload Using NeuroConv Helper (Recommended)
 
-NeuroConv provides `automatic_dandi_upload()` which handles download, organize, and upload.
-**Important**: This function reads `DANDI_API_KEY` from the environment, so set it to the
-correct labeled key first:
+NeuroConv provides `automatic_dandi_upload()` which handles download, organize, and upload:
 
 ```python
-import os
+from pathlib import Path
+
 from neuroconv.tools.data_transfers import automatic_dandi_upload
 
-# Set DANDI_API_KEY from the labeled env var for the chosen instance
-os.environ["DANDI_API_KEY"] = os.environ["DANDI_SANDBOX_API_KEY"]  # or just DANDI_API_KEY for production
-
 automatic_dandi_upload(
-    dandiset_id="000123",           # 6-digit Dandiset ID
-    nwb_folder_path="./nwb_output", # Folder with all NWB files
-    sandbox=True,                    # True for sandbox, False for production
-    number_of_jobs=1,               # Parallel upload jobs
-    number_of_threads=4,            # Threads per upload
+    dandiset_id="000123",                 # 6-digit Dandiset ID
+    nwb_folder_path=Path("./nwb_output"), # Folder with all NWB files
+    sandbox=True,                         # True for sandbox, False for production
+    number_of_jobs=1,                     # Parallel upload jobs
+    number_of_threads=4,                  # Threads per upload
 )
 ```
 
@@ -151,13 +111,13 @@ This function:
 2. Runs `dandi organize` to rename files to DANDI conventions (sub-<id>/sub-<id>_ses-<id>.nwb)
 3. Uploads all organized NWB files
 
-### Step 5: Upload Using DANDI CLI (Alternative)
+### Step 4: Upload Using DANDI CLI (Alternative)
 
 If the NeuroConv helper doesn't work, use the DANDI CLI directly:
 
 ```bash
-# 1. Download the Dandiset structure
-dandi download https://dandiarchive.org/dandiset/000123/draft
+# 1. Download only dandiset.yaml (sandbox: DANDI-SANDBOX:000123)
+dandi download --download dandiset.yaml DANDI:000123
 cd 000123
 
 # 2. Organize NWB files into DANDI structure (renames files)
@@ -167,42 +127,11 @@ dandi organize /path/to/nwb/output/         # Execute
 # 3. Validate
 dandi validate .
 
-# 4. Upload
+# 4. Upload (sandbox: dandi upload -i dandi-sandbox)
 dandi upload
 ```
 
-### Step 5b: Upload Using DANDI Python API (Alternative)
-
-If the CLI approaches have issues (e.g., sandbox identifier format), use the Python API directly:
-
-```python
-import os
-from pathlib import Path
-from dandi.dandiapi import DandiAPIClient
-
-# For sandbox: set DANDI_API_KEY from the labeled sandbox key
-os.environ["DANDI_API_KEY"] = os.environ["DANDI_SANDBOX_API_KEY"]
-client = DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
-# For production:
-# client = DandiAPIClient()  # uses DANDI_API_KEY directly
-client.dandi_authenticate()
-dandiset = client.get_dandiset("000123", "draft")
-
-# Upload each organized NWB file
-# NOTE: iter_upload_raw_asset() is on the RemoteDandiset object, NOT on DandiAPIClient
-nwb_dir = Path("./000123")
-for nwb_path in sorted(nwb_dir.rglob("*.nwb")):
-    asset_path = str(nwb_path.relative_to(nwb_dir))
-    print(f"Uploading {asset_path}...")
-    for status in dandiset.iter_upload_raw_asset(nwb_path, asset_metadata={"path": asset_path}):
-        if isinstance(status, dict) and status.get("status") == "done":
-            print(f"  Done: {status['asset'].path}")
-```
-
-**DANDI sandbox URL**: Always use `https://api.sandbox.dandiarchive.org/api` for the
-sandbox API.
-
-### Step 6: Verify on DANDI
+### Step 5: Verify on DANDI
 
 After upload completes:
 > Your data is now on DANDI! You can view it at:
@@ -216,32 +145,7 @@ After upload completes:
 > Next we'll fill in the Dandiset metadata (authors, funding, the associated paper,
 > brain regions, license), which DANDI requires before the Dandiset can be published.
 
-### Testing with Sandbox
-
-For testing uploads before going to production:
-
-```python
-# Use the sandbox server
-automatic_dandi_upload(
-    dandiset_id="000123",
-    nwb_folder_path="./nwb_output",
-    sandbox=True,  # Upload to sandbox.dandiarchive.org
-)
-```
-
-Or with the CLI:
-```bash
-# Point DANDI_API_KEY to the sandbox key
-export DANDI_API_KEY=$DANDI_SANDBOX_API_KEY
-
-# Upload to sandbox
-dandi upload -i dandi-sandbox
-```
-
-The sandbox server is at https://sandbox.dandiarchive.org/ (API: https://api.sandbox.dandiarchive.org/) —
-create a separate account and Dandiset there for testing.
-
-### Step 7: Write Conversion Manifest
+### Step 6: Write Conversion Manifest
 
 After the upload is complete, write a `conversion_manifest.yaml` to the
 conversion repo. This manifest captures structured metadata about what was built, enabling
@@ -312,7 +216,7 @@ If working locally (API was unreachable), inform the user:
 > The conversion manifest has been saved locally. To include this conversion in the
 > registry for future reference, contact CatalystNeuro for assistance.
 
-### Step 8: Save Conversation History
+### Step 7: Save Conversation History
 
 Save the Claude Code conversation that produced this conversion into the repo. This
 captures every decision, data inspection, question, and code generation step for
@@ -362,32 +266,38 @@ to understand exactly how the conversion was built.
 
 ### Common Issues
 
-- **"Unable to find environment variable DANDI_API_KEY"**: Set the API key with `export DANDI_API_KEY=...`
+- **Unable to find environment variable 'DANDI_API_KEY'** (or `'DANDI_SANDBOX_API_KEY'`): export the variable for the chosen instance
 - **Validation errors**: Run `nwbinspector` and `dandi validate` to identify issues
 - **Files too large**: DANDI supports files up to 5TB. Contact DANDI team for datasets >10TB
 - **Path too long**: DANDI has a 512-character path limit. Shorten session/subject IDs if needed
 - **Organize step fails**: Ensure NWB files have `subject.subject_id` and `session_id` set
 - **Upload hangs**: Try with `number_of_jobs=1` and `number_of_threads=1` for debugging.
-  Check logs at `~/Library/Logs/dandi-cli` (macOS) or `~/.cache/dandi-cli/log` (Linux)
+  The log path is printed at the end of each `dandi` run (`Logs saved in ...`).
 
 ### Add Upload to convert_all_sessions.py
 
 Optionally add upload as the final step of batch conversion:
 
 ```python
+from pathlib import Path
+
+from neuroconv.tools.data_transfers import automatic_dandi_upload
+
+
 def dataset_to_nwb(
     data_dir_path,
     output_dir_path,
     dandiset_id=None,
+    sandbox: bool = False,
     max_workers=1,
     stub_test=False,
 ):
     # ... run all conversions ...
 
     if dandiset_id and not stub_test:
-        from neuroconv.tools.data_transfers import automatic_dandi_upload
         automatic_dandi_upload(
             dandiset_id=dandiset_id,
-            nwb_folder_path=output_dir_path,
+            nwb_folder_path=Path(output_dir_path),
+            sandbox=sandbox,
         )
 ```
