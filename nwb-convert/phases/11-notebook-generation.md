@@ -41,10 +41,12 @@ template, including only sections relevant to the dataset:
 ```
 1. Title & Introduction
    - Dataset description, link to Dandiset, link to paper (if any)
+   - Link to the session in Neurosift:
+     `https://neurosift.app/nwb?dandisetId=<dandiset_id>&dandisetVersion=draft&path=<asset_path>`
    - Brief experimental summary
 
 2. Setup
-   - Install/import dependencies
+   - Import dependencies (the install cell is generated in Step 5)
    - Connect to DANDI and list available sessions
 
 3. Load a Single Session
@@ -83,40 +85,45 @@ Present the plan to the user:
 
 ### Step 2: Set Up the Notebook Directory
 
-Create the notebook in a local working directory following the `dandi/example-notebooks`
-conventions:
+Fork and clone `dandi/example-notebooks` (default branch `master`), create a branch, and
+create the notebook directory inside the clone. The layout follows the repo's
+[README](https://github.com/dandi/example-notebooks#submission-instructions):
+
+```bash
+gh repo fork dandi/example-notebooks --clone
+cd example-notebooks
+git checkout -b add-<dandiset_id>
+mkdir -p <dandiset_id>/<lab_name>/<mnemonic>
+```
 
 ```
-<working_dir>/
+example-notebooks/
   <dandiset_id>/
-    nwb-convert-skill/
-      environment.yml
-      README.md
-      <dandiset_id>_demo.ipynb
+    <lab_name>/              # org or lab name, e.g. DombeckLab
+      <mnemonic>/            # short name for the paper or analysis, e.g. smith2025
+        requirements.in
+        README.md
+        <dandiset_id>_demo.ipynb
 ```
 
-**environment.yml** — minimal conda environment:
-```yaml
-name: <dandiset_id>_demo
-channels:
-    - conda-forge
-dependencies:
-    - python==3.11
-    - pip
-    - pip:
-      - dandi
-      - jupyter
-      - matplotlib
-      - pynwb
-      - remfile
-      - pynapple
-      - h5py
+**requirements.in**: the notebook's direct imports, one per line. Do not list transitive
+dependencies or a full freeze; the repo's tooling compiles the pinned set from this file.
+
+```
+dandi
+h5py
+matplotlib
+pynapple
+pynwb
+remfile
 ```
 
-Add additional pip dependencies only if the notebook actually uses them (e.g., `scipy`
-for signal processing, `numpy` for array operations). Keep it minimal.
+Add a package only if the notebook imports it (e.g., `numpy`, `scipy`, an `ndx-*`
+extension). If the notebook needs a version range, write it as a bound
+(e.g., `matplotlib<3.11`).
 
-**README.md**:
+**README.md**: explain the goal of the notebook, link the Dandiset and any publication,
+and describe what each notebook shows.
 ```markdown
 # <Dandiset Title>
 
@@ -125,20 +132,11 @@ This example notebook demonstrates how to access and visualize the dataset publi
 
 <Brief description of the data: species, brain regions, recording methods, behavioral task>
 
-## Installing the dependencies
+## Notebooks
 
-```bash
-git clone https://github.com/dandi/example-notebooks
-cd example-notebooks/<dandiset_id>/CatalystNeuro
-conda env create --file environment.yml
-conda activate <dandiset_id>_demo
-```
+### `<dandiset_id>_demo.ipynb`
 
-## Running the notebook
-
-```bash
-jupyter notebook <dandiset_id>_demo.ipynb
-```
+<What the notebook streams and what each section shows>
 ```
 
 ### Step 3: Write the Notebook
@@ -299,24 +297,32 @@ for i, ep in enumerate(trial_epochs):
 
 ### Step 4: Test the Notebook
 
-Run the notebook end-to-end using `jupyter execute`:
+The repository's CI runs each new notebook on Python 3.13 in a fresh environment that
+contains only the pinned packages from the install cell, with no display. Test the same
+way: a new Python 3.13 environment outside the clone with only `requirements.in` and
+Jupyter installed. `JUPYTER_PREFER_ENV_PATH=1` makes Jupyter use this environment's
+kernel even when the user has their own `python3` kernel registered.
 
 ```bash
-cd <working_dir>/<dandiset_id>/CatalystNeuro
-jupyter execute <dandiset_id>_demo.ipynb --timeout=600
+uv venv --python 3.13 notebook-env
+source notebook-env/bin/activate
+uv pip install -r example-notebooks/<dandiset_id>/<lab_name>/<mnemonic>/requirements.in jupyter
+export JUPYTER_PREFER_ENV_PATH=1
+cd example-notebooks/<dandiset_id>/<lab_name>/<mnemonic>
+jupyter execute --inplace --timeout=600 <dandiset_id>_demo.ipynb
 ```
 
-Or test with `nbconvert`:
-
-```bash
-jupyter nbconvert --to notebook --execute <dandiset_id>_demo.ipynb --output executed.ipynb
-```
+`--inplace` saves the outputs into the notebook, so you can read them and they render on
+GitHub after submission. The lock script in Step 5 keeps them.
 
 Verify:
 1. All cells execute without errors
-2. All plots render correctly (read the output notebook images)
+2. All plots render correctly (read the images in the notebook's outputs)
 3. Streaming access works (no local file dependencies)
 4. The notebook completes in a reasonable time (< 5 minutes for streaming)
+5. The notebook runs headlessly: no `%matplotlib widget` or other interactive backend,
+   no plotly `fig.show()` without `pio.renderers.default = "iframe"`, no `input()`.
+   See the repo's [adding-notebooks guide](https://github.com/dandi/example-notebooks/blob/master/docs/adding-notebooks.md).
 
 If cells fail, fix the code and re-run. Common issues:
 - **remfile timeout**: Some NWB files are large. Consider loading less data or a smaller session.
@@ -327,26 +333,24 @@ Present this to the user and request feedback. Only proceed to Step 5 after you 
 
 ### Step 5: Submit to example-notebooks
 
-Clone the `dandi/example-notebooks` repository and add the notebook:
+With the test environment still active (the script needs `uv` on `PATH` and `nbformat`,
+which Jupyter installed), run the repo's lock script from the root of the clone. It
+resolves `requirements.in` against Colab's runtime and writes the Colab badge and the
+pinned `!uv pip install --system` cell at the top of the notebook. CI fails a new
+notebook that lacks this cell.
 
 ```bash
-# Clone the repo (or fork if you don't have write access)
-gh repo fork dandi/example-notebooks --clone
-cd example-notebooks
+cd ../../..  # root of the example-notebooks clone
+python .github/scripts/lock_notebook.py <dandiset_id>/<lab_name>/<mnemonic>/<dandiset_id>_demo.ipynb
 
-# Create a branch
-git checkout -b add-notebook-<dandiset_id>
-
-# Copy the notebook directory
-cp -r <working_dir>/<dandiset_id> .
-
-# Commit and push
-git add <dandiset_id>/
+git add <dandiset_id>/<lab_name>/<mnemonic>/requirements.in \
+  <dandiset_id>/<lab_name>/<mnemonic>/README.md \
+  <dandiset_id>/<lab_name>/<mnemonic>/<dandiset_id>_demo.ipynb
 git commit -m "Add example notebook for DANDI:<dandiset_id>"
-git push -u origin add-notebook-<dandiset_id>
+git push -u origin add-<dandiset_id>
 
-# Create PR
 gh pr create \
+  --repo dandi/example-notebooks \
   --title "Add tutorial notebook for <dandiset_id>" \
   --body "Add tutorial notebook demonstrating how to stream and visualize NWB data from DANDI:<dandiset_id>.
 
@@ -356,11 +360,11 @@ gh pr create \
 - Visualizes [list key visualizations]
 - [Optional: Reproduces Figure X from the associated paper]
 
-## Dependencies
-Listed in environment.yml (conda + pip)
-
 Generated with [Claude Code](https://claude.com/claude-code)"
 ```
+
+CI on the PR runs the notebook from its install cell. Check the result with
+`gh pr checks` and fix any failure before telling the user.
 
 Inform the user:
 > The example notebook has been submitted as a PR to dandi/example-notebooks.
