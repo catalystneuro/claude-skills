@@ -165,7 +165,8 @@ for plane_idx in range(n_planes):
         device=device,
         excitation_lambda=920.0,
         indicator="GCaMP6f",
-        location=f"CA1_plane{plane_idx}",
+        location="CA1",
+        description=f"Plane {plane_idx}, {plane_depths_um[plane_idx]} um below pia",
     )
     # Create TwoPhotonSeries and PlaneSegmentation per plane...
 ```
