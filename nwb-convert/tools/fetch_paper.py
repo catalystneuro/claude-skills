@@ -12,8 +12,8 @@ Identifier can be:
 
 Examples:
     python fetch_paper.py 10.1126/science.aav7893
-    python fetch_paper.py 10.1126/science.aav7893 --extract methods
-    python fetch_paper.py PMC6525101 --extract methods
+    python fetch_paper.py 10.1038/s41586-024-08168-4 --extract methods
+    python fetch_paper.py PMC11666460 --extract methods
     python fetch_paper.py 31000656 --extract abstract
 """
 
@@ -77,7 +77,7 @@ def resolve_ids(identifier: dict) -> dict:
     else:
         query_id = id_val
 
-    url = f"https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?tool=nwbguide&format=json&ids={quote(query_id)}"
+    url = f"https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/?tool=nwbguide&format=json&ids={quote(query_id)}"
     try:
         data = json.loads(fetch_url(url))
         records = data.get("records", [])

@@ -35,7 +35,7 @@ notebook from Phase 8. The combined demo notebook goes on the last branch.
 
 ## Creating the branches
 
-After the initial `.gitignore` commit on `main` (Phase 1, Step 0b) is pushed:
+After the initial `.gitignore` commit on `main` (Phase 1, Step 0a) is pushed:
 
 ```bash
 git checkout -b setup

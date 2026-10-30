@@ -41,7 +41,7 @@ For a sandbox Dandiset, pass `--instance sandbox` to the skill's `fetch`, `audit
 Much of what the skill would otherwise ask for was collected in earlier phases. Read
 `conversion_notes.md` and supply it instead of asking again:
 
-- **Publication**: the DOI or citation from Phase 1. `tools/fetch_paper.py` can pull the
+- **Publication**: the DOI or citation from Phase 1. `<skill_dir>/tools/fetch_paper.py` can pull the
   full text, whose acknowledgments list funding and award numbers and whose methods usually
   give the IACUC or IRB protocol.
 - **Experimenters and lab**: the people named in Phase 3 metadata (`experimenter`, `lab`,
