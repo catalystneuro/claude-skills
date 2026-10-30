@@ -95,7 +95,7 @@ name: <lab_name>_demo
 channels:
     - conda-forge
 dependencies:
-    - python==3.11
+    - python=3.12
     - pip
     - pip:
       - jupyter
