@@ -18,11 +18,13 @@
 - `experiment_description` — Overall experiment description (can be paper abstract)
 - `institution` — University/institute name
 - `lab` — PI's lab name
-- `experimenter` — List of experimenters as ["Last, First"]
+- `experimenter` — Who collected the data
 - `keywords` — Relevant keywords for discoverability
-- `related_publications` — DOI format: `"doi:10.xxxx/xxxxx"`
+- `related_publications` — DOIs of the papers that use these data
 
-**Subject:** see Per-Subject Metadata below. Field formats are in `knowledge/nwb-best-practices.md` (Subject).
+**Subject:** see Per-Subject Metadata below.
+
+Write each field in the format given in `knowledge/nwb-best-practices.md` (NWBFile Metadata and Subject).
 
 ### Modality-Specific Metadata
 
@@ -75,7 +77,7 @@ Ophys:
 - Do you have histology-confirmed electrode locations or atlas-registered probe tracks (e.g., SHARP-Track, brainreg, Pinpoint)? (If so, these should override intended targets; store atlas coordinates as in `knowledge/ndx-anatomical-localization.md`)
 
 These are usually auto-extracted from SpikeGLX/OpenEphys metadata, but confirm with the user.
-Note: every electrode MUST have a `location` value. If the region is truly unknown, use "unknown" and expect the Inspector's Allen CCF warning for mouse subjects.
+Every electrode needs a `location`; see `knowledge/nwb-best-practices.md` (ecephys).
 
 **Session-specific (often extracted from data):**
 - `session_start_time` — MUST include timezone (e.g., America/New_York)
@@ -142,16 +144,9 @@ in `convert_session.py` since it varies per session.
 
 ### Per-Subject Metadata
 
-You MUST collect subject-level metadata for each subject. This is required for DANDI upload.
-
-For each subject, collect:
-- `subject_id` — **Required for DANDI**. Unique identifier, no `/`.
-- `species` — **Required for DANDI**. Latin binomial (e.g., "Mus musculus", "Rattus norvegicus").
-- `sex` — **Required for DANDI**. One of "M", "F", "U", "O".
-- `date_of_birth` or `age` — **Required for DANDI** (at least one). `age` per session as ISO 8601 duration (e.g., "P90D").
-- `genotype` — **Recommended** if transgenic.
-- `weight` — **Recommended**. At time of experiment or implant, as "<number> <unit>" with unit one of kg, g, mg, ug, ng, pg.
-- `strain` — **Recommended** (e.g., "C57BL/6J").
+You MUST collect subject-level metadata for each subject. DANDI requires `subject_id`, `species`, `sex`,
+and `date_of_birth` or `age`; ask also for `genotype` (if transgenic), `strain`, and `weight` (at the time of
+the experiment or implant). Formats are in `knowledge/nwb-best-practices.md` (Subject).
 
 If there are multiple subjects, create a `subject_metadata.yaml` (or `.json`) keyed by
 subject_id:

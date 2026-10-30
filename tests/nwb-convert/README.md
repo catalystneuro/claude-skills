@@ -40,6 +40,10 @@ boolean, integer, numeric, and free-text columns and an events table that alread
 
 These are skipped when `ndx-hed` is not installed.
 
+`test_best_practices.py` checks `knowledge/nwb-best-practices.md` against the installed NWB
+Inspector: every check it names exists, its Validation section names the checks that
+`--config dandi` changes, and every check named in Phase 7 is also named there.
+
 `test_lookups.py` runs every `curl` command in the knowledge file against the live
 registries, checks the facts the text states about their results, and checks that every URL
 in the two files resolves. `test_fetch_paper.py` checks that `tools/fetch_paper.py` resolves a

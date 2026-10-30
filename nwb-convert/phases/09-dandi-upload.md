@@ -84,10 +84,9 @@ nwbinspector /path/to/nwb/output/ --config dandi
 Fix every ERROR, PYNWB_VALIDATION, and CRITICAL message before proceeding; `dandi upload` refuses
 files that have them.
 
-`dandi validate` only works inside a Dandiset folder (one with `dandiset.yaml`); on a plain output
-folder it fails with `DANDI.NO_DANDISET_FOUND`. Inside the Dandiset it also checks the file and
-folder names that `dandi organize` produces. Step 5 runs it after `dandi organize`, and
-`automatic_dandi_upload` in Step 4 validates each file before uploading it.
+`dandi validate` needs a Dandiset folder, so it runs after `dandi organize` in Step 4, and
+`automatic_dandi_upload` in Step 3 validates each file before uploading it. What each tool checks is
+in `knowledge/nwb-best-practices.md` ("Validation").
 
 ### Step 3: Upload Using NeuroConv Helper (Recommended)
 
