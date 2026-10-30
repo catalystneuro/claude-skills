@@ -992,22 +992,6 @@ result = dict_deep_update(base, override)
 # result = {"NWBFile": {"lab": "new", "institution": "MIT"}}
 ```
 
-### `H5DataIO`
-
-Wraps numpy arrays for HDF5 compression. Use this for large data arrays:
-
-```python
-from hdmf.backends.hdf5.h5_utils import H5DataIO
-
-spatial_series = SpatialSeries(
-    name="position",
-    data=H5DataIO(position_data, compression="gzip"),
-    timestamps=timestamps,
-    reference_frame="unknown",
-    unit="m",
-)
-```
-
 ### `get_module`
 
 Gets or creates a processing module in an NWB file:

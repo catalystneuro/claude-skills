@@ -248,14 +248,11 @@ for _, row in trials_df.iterrows():
 
 See the `EventsTable` section of `knowledge/pynwb-behavior.md`.
 
-### Using H5DataIO for compression
+### Compression and chunking
 
-```python
-from hdmf.backends.hdf5.h5_utils import H5DataIO
-
-compressed_data = H5DataIO(data=large_array, compression="gzip")
-ts = TimeSeries(name="my_data", data=compressed_data, ...)
-```
+Pass plain arrays (or a `SliceableDataChunkIterator` for data larger than memory) and do not wrap them in
+`H5DataIO`. `run_conversion` chunks and compresses every dataset. To change those settings, see
+`knowledge/pynwb-advanced-io.md`.
 
 ## Synchronization Patterns from Real Repos
 
