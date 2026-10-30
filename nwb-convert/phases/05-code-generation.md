@@ -388,7 +388,9 @@ def session_to_nwb(
     conversion_options = dict()
 
     # Add each interface with its file paths
-    source_data["Recording"] = dict(folder_path=str(data_dir_path / "..."))
+    # Pass every required source_data argument the interface lists in neuroconv-interfaces.yaml
+    # (SpikeGLXRecordingInterface shown here)
+    source_data["Recording"] = dict(folder_path=str(data_dir_path / "..."), stream_id="imec0.ap")
     conversion_options["Recording"] = dict(stub_test=stub_test)
 
     # Conditionally add interfaces if files exist
