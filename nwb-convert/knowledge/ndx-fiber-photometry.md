@@ -11,8 +11,8 @@ uv pip install "ndx-fiber-photometry>=0.2.4,<0.3"
 ```
 
 Pin `ndx-fiber-photometry>=0.2.4,<0.3` in the conversion's dependencies. 0.2.4 caps
-`ndx-ophys-devices` below 0.4; earlier 0.2.x releases do not, and resolve to
-`ndx-ophys-devices` 0.4, which removes `FiberInsertion` (replaced by `StereotacticPosition`).
+`ndx-ophys-devices` below 0.4; see `knowledge/ndx-ophys-devices.md` for the device classes and
+the version constraint.
 
 ## Overview
 
@@ -27,10 +27,9 @@ The extension defines a structured hierarchy:
 
 ## Complete Construction Example
 
-Device specifications (wavelengths, numerical aperture, detector type, filter bands) go on the
-`*Model` objects from ndx-ophys-devices, added with `nwbfile.add_device_model()`. Each device
-instance links to its model with `model=` and carries only instance-level values such as
-`serial_number` or `power_in_W`.
+Build the device models, devices, viral vector, injection, and indicator as in
+`knowledge/ndx-ophys-devices.md`; this example uses the objects and variable names from that file.
+The isosbestic control channel needs a second excitation source.
 
 ```python
 from ndx_fiber_photometry import (
@@ -42,134 +41,23 @@ from ndx_fiber_photometry import (
     FiberPhotometryViruses,
     FiberPhotometryVirusInjections,
 )
-from ndx_ophys_devices import (
-    BandOpticalFilter,
-    BandOpticalFilterModel,
-    DichroicMirror,
-    DichroicMirrorModel,
-    ExcitationSource,
-    ExcitationSourceModel,
-    FiberInsertion,
-    Indicator,
-    OpticalFiber,
-    OpticalFiberModel,
-    Photodetector,
-    PhotodetectorModel,
-    ViralVector,
-    ViralVectorInjection,
-)
+from ndx_ophys_devices import ExcitationSource, ExcitationSourceModel
 
-# ── Step 1: Device models and devices ───────────────────────────────────
-
-led_465_model = ExcitationSourceModel(
-    name="Doric LED 465",
-    description="465 nm LED for dLight excitation",
-    manufacturer="Doric Lenses",
-    source_type="LED",
-    excitation_mode="one-photon",
-    wavelength_range_in_nm=[460.0, 470.0],
-)
-led_405_model = ExcitationSourceModel(
+isosbestic_source_model = ExcitationSourceModel(
     name="Doric LED 405",
-    description="405 nm LED for isosbestic excitation",
+    description="405 nm connectorized LED",
     manufacturer="Doric Lenses",
     source_type="LED",
     excitation_mode="one-photon",
     wavelength_range_in_nm=[400.0, 410.0],
 )
-photodetector_model = PhotodetectorModel(
-    name="Newport 2151",
-    description="Femtowatt photoreceiver",
-    manufacturer="Newport",
-    detector_type="Photodiode",
-    wavelength_range_in_nm=[400.0, 1070.0],
+nwbfile.add_device_model(isosbestic_source_model)
+isosbestic_source = ExcitationSource(
+    name="isosbestic_source", description="Isosbestic excitation LED", model=isosbestic_source_model
 )
-optical_fiber_model = OpticalFiberModel(
-    name="Doric MFC_400",
-    description="Mono fiber-optic cannula",
-    manufacturer="Doric Lenses",
-    numerical_aperture=0.48,
-    core_diameter_in_um=400.0,
-)
-dichroic_mirror_model = DichroicMirrorModel(
-    name="Semrock FF495-Di03",
-    description="495 nm single-edge dichroic beamsplitter",
-    manufacturer="Semrock",
-    cut_on_wavelength_in_nm=495.0,
-)
-emission_filter_model = BandOpticalFilterModel(
-    name="Semrock FF01-525-50",
-    description="525/50 nm bandpass emission filter",
-    manufacturer="Semrock",
-    filter_type="Bandpass",
-    center_wavelength_in_nm=525.0,
-    bandwidth_in_nm=50.0,
-)
-for device_model in (
-    led_465_model, led_405_model, photodetector_model, optical_fiber_model, dichroic_mirror_model, emission_filter_model
-):
-    nwbfile.add_device_model(device_model)
+nwbfile.add_device(isosbestic_source)
 
-excitation_source_465 = ExcitationSource(
-    name="excitation_source_465", description="Signal excitation LED", model=led_465_model, power_in_W=0.7
-)
-excitation_source_405 = ExcitationSource(
-    name="excitation_source_405", description="Isosbestic excitation LED", model=led_405_model
-)
-photodetector = Photodetector(name="photodetector", description="Green-channel detector", model=photodetector_model)
-optical_fiber = OpticalFiber(
-    name="optical_fiber",
-    description="Fiber implanted above right DMS",
-    model=optical_fiber_model,
-    fiber_insertion=FiberInsertion(
-        insertion_position_ap_in_mm=0.5,
-        insertion_position_ml_in_mm=1.5,
-        insertion_position_dv_in_mm=-3.0,
-        depth_in_mm=3.5,
-        position_reference="bregma",
-        hemisphere="right",
-    ),
-)
-dichroic_mirror = DichroicMirror(
-    name="dichroic_mirror", description="Excitation/emission splitter", model=dichroic_mirror_model
-)
-emission_filter = BandOpticalFilter(
-    name="emission_filter", description="Green emission filter", model=emission_filter_model
-)
-for device in (
-    excitation_source_465, excitation_source_405, photodetector, optical_fiber, dichroic_mirror, emission_filter
-):
-    nwbfile.add_device(device)
-
-# ── Step 2: Virus, injection, and indicator ─────────────────────────────
-
-viral_vector = ViralVector(
-    name="AAV5-CAG-dLight1.1",
-    construct_name="AAV5-CAG-dLight1.1",
-    description="Dopamine sensor virus",
-    manufacturer="Addgene",
-    titer_in_vg_per_ml=1.0e13,
-)
-viral_vector_injection = ViralVectorInjection(
-    name="dLight1.1 injection",
-    description="dLight1.1 injection into right DMS",
-    location="DMS",
-    hemisphere="right",
-    reference="bregma",
-    ap_in_mm=0.5,
-    ml_in_mm=1.5,
-    dv_in_mm=-3.2,
-    volume_in_uL=0.5,
-    viral_vector=viral_vector,
-)
-indicator = Indicator(
-    name="dLight1.1",
-    description="Genetically-encoded dopamine sensor dLight1.1",
-    label="dLight1.1",
-    viral_vector_injection=viral_vector_injection,
-)
-
-# ── Step 3: FiberPhotometryTable (one row per fiber × excitation wavelength) ──
+# ── Step 1: FiberPhotometryTable (one row per fiber × excitation wavelength) ──
 
 fiber_photometry_table = FiberPhotometryTable(
     name="fiber_photometry_table",
@@ -181,7 +69,7 @@ fiber_photometry_table.add_row(
     emission_wavelength_in_nm=525.0,
     indicator=indicator,
     optical_fiber=optical_fiber,
-    excitation_source=excitation_source_465,
+    excitation_source=excitation_source,
     photodetector=photodetector,
     dichroic_mirror=dichroic_mirror,
     emission_filter=emission_filter,
@@ -192,13 +80,13 @@ fiber_photometry_table.add_row(
     emission_wavelength_in_nm=525.0,
     indicator=indicator,
     optical_fiber=optical_fiber,
-    excitation_source=excitation_source_405,
+    excitation_source=isosbestic_source,
     photodetector=photodetector,
     dichroic_mirror=dichroic_mirror,
     emission_filter=emission_filter,
 )
 
-# ── Step 4: FiberPhotometry lab metadata ────────────────────────────────
+# ── Step 2: FiberPhotometry lab metadata ────────────────────────────────
 # Add the table to the file before creating series that reference it.
 
 fiber_photometry = FiberPhotometry(
@@ -210,7 +98,7 @@ fiber_photometry = FiberPhotometry(
 )
 nwbfile.add_lab_meta_data(fiber_photometry)
 
-# ── Step 5: Response series ─────────────────────────────────────────────
+# ── Step 3: Response series ─────────────────────────────────────────────
 
 signal_series = FiberPhotometryResponseSeries(
     name="raw_dms_465",
@@ -235,7 +123,7 @@ isosbestic_series = FiberPhotometryResponseSeries(
 nwbfile.add_acquisition(signal_series)
 nwbfile.add_acquisition(isosbestic_series)
 
-# ── Step 6: Optional CommandedVoltageSeries ─────────────────────────────
+# ── Step 4: Optional CommandedVoltageSeries ─────────────────────────────
 
 commanded_voltage = CommandedVoltageSeries(
     name="commanded_voltage",
@@ -254,7 +142,9 @@ For experiments with multiple fibers (e.g., DMS + NAc), reusing the models, devi
 indicator from the example above with an empty table:
 
 ```python
-# One FiberInsertion per fiber (default name "fiber_insertion" is required).
+from ndx_ophys_devices import FiberInsertion, OpticalFiber
+
+# One FiberInsertion per fiber
 fiber_dms = OpticalFiber(
     name="optical_fiber_dms",
     description="Fiber implanted above DMS",
@@ -280,13 +170,13 @@ shared_columns = dict(
     dichroic_mirror=dichroic_mirror, emission_filter=emission_filter,
 )
 fiber_photometry_table.add_row(location="DMS", optical_fiber=fiber_dms, excitation_wavelength_in_nm=465.0,
-                               excitation_source=excitation_source_465, **shared_columns)  # row 0
+                               excitation_source=excitation_source, **shared_columns)  # row 0
 fiber_photometry_table.add_row(location="DMS", optical_fiber=fiber_dms, excitation_wavelength_in_nm=405.0,
-                               excitation_source=excitation_source_405, **shared_columns)  # row 1
+                               excitation_source=isosbestic_source, **shared_columns)  # row 1
 fiber_photometry_table.add_row(location="NAc", optical_fiber=fiber_nac, excitation_wavelength_in_nm=465.0,
-                               excitation_source=excitation_source_465, **shared_columns)  # row 2
+                               excitation_source=excitation_source, **shared_columns)  # row 2
 fiber_photometry_table.add_row(location="NAc", optical_fiber=fiber_nac, excitation_wavelength_in_nm=405.0,
-                               excitation_source=excitation_source_405, **shared_columns)  # row 3
+                               excitation_source=isosbestic_source, **shared_columns)  # row 3
 
 # A separate response series for each channel
 dms_signal = FiberPhotometryResponseSeries(
@@ -315,8 +205,8 @@ When using a NeuroConv fiber photometry interface, start from
 `interface.get_metadata_template()` (or `get_metadata()` for an interface without it, such as
 `TDTFiberPhotometryInterface`), fill in the `None` values, and delete the optional entries the
 rig did not use. Devices and device models live in the top-level `Devices` and
-`DeviceModels` dicts (each entry has a `type`, and a device points to its model with
-`device_model_metadata_key`). `FiberPhotometry` holds `FiberPhotometryIndicators`, the
+`DeviceModels` dicts described in `knowledge/ndx-ophys-devices.md` ("Metadata YAML").
+`FiberPhotometry` holds `FiberPhotometryIndicators`, the
 optional `FiberPhotometryViruses` and `FiberPhotometryVirusInjections`, and
 `FiberPhotometryTable` with keyed `rows` that reference devices and indicators by
 `*_metadata_key`.
@@ -326,6 +216,4 @@ optional `FiberPhotometryViruses` and `FiberPhotometryVirusInjections`, and
 - Raw fluorescence goes in `acquisition`. Processed traces (dF/F, z-score) are
   `FiberPhotometryResponseSeries` in `get_module(nwbfile, "ophys")` referencing the same
   table rows.
-- A `ViralVectorInjection` linked from an `Indicator` must also be in
-  `FiberPhotometryVirusInjections`, or writing the file fails with an orphan-container error.
 - `unit` for fluorescence data is typically `"F"` (arbitrary fluorescence units).

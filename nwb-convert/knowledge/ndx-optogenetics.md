@@ -16,119 +16,25 @@ Do **not** use `nwbfile.create_ogen_site()` or `pynwb.ogen.OptogeneticSeries` in
 uv pip install "ndx-optogenetics>=0.4.1,<0.5"
 ```
 
-Patterns for ndx-optogenetics 0.4.x on ndx-ophys-devices 0.3.x. Pin `ndx-optogenetics>=0.4.1,<0.5`
-in the conversion's dependencies; 0.4.1 caps ndx-ophys-devices below 0.4, whose
-`StereotacticPosition` replaces `FiberInsertion` and the `ViralVectorInjection` coordinate fields.
+Patterns for ndx-optogenetics 0.4.x. Pin `ndx-optogenetics>=0.4.1,<0.5` in the conversion's
+dependencies; 0.4.1 caps ndx-ophys-devices below 0.4 (see `knowledge/ndx-ophys-devices.md`).
 
 ### Complete Construction Example
 
+Build the excitation source, optical fiber, viral vector, injection, and effector as in
+`knowledge/ndx-ophys-devices.md`; this example uses the objects and variable names from that file.
+A stimulation rig needs only the excitation source and optical fiber from the devices there.
+
 ```python
-from ndx_ophys_devices import (
-    ExcitationSourceModel,
-    ExcitationSource,
-    OpticalFiberModel,
-    OpticalFiber,
-    FiberInsertion,
-    ViralVector,
-    ViralVectorInjection,
-    Effector,
-)
 from ndx_optogenetics import (
+    OptogeneticEffectors,
+    OptogeneticEpochsTable,
+    OptogeneticExperimentMetadata,
+    OptogeneticPulsesTable,
     OptogeneticSitesTable,
     OptogeneticViruses,
     OptogeneticVirusInjections,
-    OptogeneticEffectors,
-    OptogeneticExperimentMetadata,
-    OptogeneticEpochsTable,
-    OptogeneticPulsesTable,
 )
-
-# Create and add excitation source devices
-excitation_source_model = ExcitationSourceModel(
-    name="Omicron LuxX+ 488-100 Model",
-    description="Laser for optogenetic stimulation.",
-    manufacturer="Omicron",
-    source_type="laser",
-    excitation_mode="one-photon",
-    wavelength_range_in_nm=[488.0, 488.0],  # [min, max]; same value for single-wavelength laser
-)
-excitation_source = ExcitationSource(
-    name="Omicron LuxX+ 488-100",
-    model=excitation_source_model,
-    power_in_W=0.077,              # device-level power spec (watts)
-    intensity_in_W_per_m2=1.0e10,
-)
-nwbfile.add_device_model(excitation_source_model)  # models use add_device_model()
-nwbfile.add_device(excitation_source)              # instances use add_device()
-
-# Create and add optical fiber devices
-optical_fiber_model = OpticalFiberModel(
-    name="Lambda Model",
-    description="Lambda fiber (tapered fiber) from Optogenix.",
-    model_number="lambda_b5",
-    manufacturer="Optogenix",
-    numerical_aperture=0.39,
-    core_diameter_in_um=200.0,
-    active_length_in_mm=2.0,
-    ferrule_name="cFCF - ∅2.5mm Ceramic Ferrule",
-    ferrule_diameter_in_mm=2.5,
-)
-fiber_insertion = FiberInsertion(
-    name="fiber_insertion",
-    insertion_position_ap_in_mm=-1.5,
-    insertion_position_ml_in_mm=3.2,
-    insertion_position_dv_in_mm=-5.8,
-    depth_in_mm=2.0,
-    position_reference="Bregma at the cortical surface",
-    hemisphere="right",
-    insertion_angle_pitch_in_deg=0.0,
-)
-optical_fiber = OpticalFiber(
-    name="Lambda",
-    description="Lambda fiber implanted into right GPe.",
-    serial_number="123456",
-    model=optical_fiber_model,
-    fiber_insertion=fiber_insertion,
-)
-nwbfile.add_device_model(optical_fiber_model)
-nwbfile.add_device(optical_fiber)
-
-# Create virus and injection metadata
-virus = ViralVector(
-    name="AAV-EF1a-DIO-hChR2(H134R)-EYFP",
-    construct_name="AAV-EF1a-DIO-hChR2(H134R)-EYFP",
-    description="Excitatory optogenetic construct for ChR2-EYFP expression",
-    manufacturer="UNC Vector Core",
-    titer_in_vg_per_ml=1.0e12,
-)
-optogenetic_viruses = OptogeneticViruses(viral_vectors=[virus])
-
-virus_injection = ViralVectorInjection(
-    name="AAV-EF1a-DIO-hChR2(H134R)-EYFP Injection",
-    description="AAV-EF1a-DIO-hChR2(H134R)-EYFP injection into GPe.",
-    hemisphere="right",
-    location="GPe",
-    ap_in_mm=-1.5,
-    ml_in_mm=3.2,
-    dv_in_mm=-6.0,
-    roll_in_deg=0.0,
-    pitch_in_deg=0.0,
-    yaw_in_deg=0.0,
-    reference="Bregma at the cortical surface",
-    viral_vector=virus,
-    volume_in_uL=0.45,
-    injection_date="1970-01-01T00:00:00+00:00",  # ISO 8601 datetime string
-)
-optogenetic_virus_injections = OptogeneticVirusInjections(viral_vector_injections=[virus_injection])
-
-# Create effector and link to virus injection
-effector = Effector(
-    name="effector",
-    description="Excitatory opsin",
-    label="hChR2-EYFP",
-    viral_vector_injection=virus_injection,
-)
-optogenetic_effectors = OptogeneticEffectors(effectors=[effector])
 
 # OptogeneticSitesTable replaces OptogeneticStimulusSite.
 # excitation_source, optical_fiber, effector are built-in columns — do NOT call add_column() for these.
@@ -144,9 +50,9 @@ optogenetic_sites_table.add_row(
 # Bundle all metadata into OptogeneticExperimentMetadata and add to NWB file
 optogenetic_experiment_metadata = OptogeneticExperimentMetadata(
     optogenetic_sites_table=optogenetic_sites_table,
-    optogenetic_viruses=optogenetic_viruses,
-    optogenetic_virus_injections=optogenetic_virus_injections,
-    optogenetic_effectors=optogenetic_effectors,
+    optogenetic_viruses=OptogeneticViruses(viral_vectors=[opsin_viral_vector]),
+    optogenetic_virus_injections=OptogeneticVirusInjections(viral_vector_injections=[opsin_viral_vector_injection]),
+    optogenetic_effectors=OptogeneticEffectors(effectors=[effector]),
     stimulation_software="Bonsai v2.6.3 + Arduino IDE",
 )
 nwbfile.add_lab_meta_data(optogenetic_experiment_metadata)
@@ -167,8 +73,8 @@ opto_epochs_table.add_row(
     number_pulses_per_pulse_train=100,
     number_trains=1,
     intertrain_interval_in_ms=0.0,
-    power_in_mW=77.0,              # per-epoch stimulation power (milliwatts, not watts)
-    wavelength_in_nm=488.0,
+    power_in_mW=1.0,               # per-epoch stimulation power (milliwatts, not watts)
+    wavelength_in_nm=465.0,
     optogenetic_sites=[0],         # index into optogenetic_sites_table
 )
 nwbfile.add_time_intervals(opto_epochs_table)
@@ -183,8 +89,8 @@ opto_pulses_table = OptogeneticPulsesTable(
 opto_pulses_table.add_row(
     start_time=10.0,
     stop_time=10.04,
-    power_in_mW=77.0,
-    wavelength_in_nm=488.0,
+    power_in_mW=1.0,
+    wavelength_in_nm=465.0,
     optogenetic_sites=[0],
 )
 nwbfile.add_time_intervals(opto_pulses_table)
@@ -196,96 +102,59 @@ nwbfile.add_time_intervals(opto_pulses_table)
   Only `effector` is required; leave out `optical_fiber` for stimulation without an implanted fiber (e.g.
   transcranial or LED-on-skull).
 - `power_in_mW` in the epoch/pulse tables is the per-stimulation power; `power_in_W` on the `ExcitationSource` device is the hardware spec.
-- Brain region names in `fiber_insertion` and `virus_injection` should use standard atlas nomenclature (Allen Brain Atlas for mice).
 - Both `OptogeneticEpochsTable` and `OptogeneticPulsesTable` can be added to the same NWB file if both epoch-level summaries and pulse-level timing are available.
-- Include always all device/device model attributes (even the optional ones). If the actual value is not available, comment it out in the generated metadata YAML file, and add an in-line comment with the description of the attribute.
-
 
 ## Metadata YAML Template
 
+NeuroConv has no optogenetics interface, so the conversion's own interface reads this metadata.
+It follows NeuroConv's conventions: devices and models go in the top-level `Devices` and
+`DeviceModels` dicts (`knowledge/ndx-ophys-devices.md`, "Metadata YAML"), and the `Optogenetics`
+section lists its entries as keyed dicts that reference each other and the devices by
+`*_metadata_key`. The interface adds each device a site references with `add_ophys_device` and
+builds the other objects with the constructors in the example above. Mark unknown values as
+described in `knowledge/ndx-ophys-devices.md`.
+
 ```yaml
 Optogenetics:
-  ExcitationSourceModel:
-    - name: Omicron LuxX+ 488-100 Model
-      description: Laser for optogenetic stimulation.
-      manufacturer: Omicron
-      source_type: laser                  # laser | LED
-      excitation_mode: one-photon         # one-photon | two-photon
-      wavelength_range_in_nm: [488.0, 488.0]  # [min, max] from the datasheet; equal values for a single-line laser
-
-  ExcitationSource:
-    - name: Omicron LuxX+ 488-100
-      model: Omicron LuxX+ 488-100 Model  # references ExcitationSourceModel.name
-      power_in_W: 0.077
-      intensity_in_W_per_m2: 1.0e10
-
-  OpticalFiberModel:
-    - name: Lambda Model
-      description: Lambda fiber (tapered fiber) from Optogenix.
-      model_number: lambda_b5
-      manufacturer: Optogenix
-      numerical_aperture: 0.39
-      core_diameter_in_um: 200.0
-      active_length_in_mm: 2.0
-      ferrule_name: "cFCF - 2.5mm Ceramic Ferrule"
-      ferrule_diameter_in_mm: 2.5
-
-  OpticalFiber:
-    - name: optical_fiber
-      description: Lambda fiber implanted into right GPe.
-      serial_number: "123456"
-      model: Lambda Model                 # references OpticalFiberModel.name
-      fiber_insertion:
-        insertion_position_ap_in_mm: -1.5
-        insertion_position_ml_in_mm: 3.2
-        insertion_position_dv_in_mm: -5.8
-        depth_in_mm: 2.0
-        position_reference: Bregma at the cortical surface
-        hemisphere: right
-        insertion_angle_pitch_in_deg: 0.0
-
-  ViralVector:
-    - name: AAV-EF1a-DIO-hChR2(H134R)-EYFP
+  OptogeneticViruses:
+    chr2_virus:
+      name: AAV-EF1a-DIO-hChR2(H134R)-EYFP
       construct_name: AAV-EF1a-DIO-hChR2(H134R)-EYFP
       description: Excitatory optogenetic construct for ChR2-EYFP expression
       manufacturer: UNC Vector Core
-      titer_in_vg_per_ml: 1.0e12
-
-  ViralVectorInjection:
-    - name: gpe_right
-      description: AAV-EF1a-DIO-hChR2(H134R)-EYFP injection into GPe.
-      hemisphere: right
+      titer_in_vg_per_ml: 1.0e+12  # YAML needs the exponent sign to read a float
+  OptogeneticVirusInjections:
+    chr2_injection:
+      name: hChR2 injection
+      description: AAV-EF1a-DIO-hChR2(H134R)-EYFP injection into right GPe
       location: GPe
+      hemisphere: right
+      reference: bregma
       ap_in_mm: -1.5
       ml_in_mm: 3.2
       dv_in_mm: -6.0
-      roll_in_deg: 0.0
-      pitch_in_deg: 0.0
-      yaw_in_deg: 0.0
-      reference: Bregma at the cortical surface
-      viral_vector: AAV-EF1a-DIO-hChR2(H134R)-EYFP  # references ViralVector.name
+      # pitch_in_deg:                    # injection angle
       volume_in_uL: 0.45
-      injection_date: "1970-01-01T00:00:00+00:00"    # ISO 8601
-
-  Effector:
-    - name: effector
+      # injection_date:                  # ISO 8601
+      viral_vector_metadata_key: chr2_virus
+  OptogeneticEffectors:
+    chr2:
+      name: hChR2-EYFP
       description: Excitatory opsin
-      label: hChR2-EYFP
-      viral_vector_injection: gpe_right # references ViralVectorInjection.name
-
+      label: hChR2(H134R)-EYFP
+      viral_vector_injection_metadata_key: chr2_injection
   OptogeneticSitesTable:
     description: Information about the optogenetic stimulation sites.
-
-  OptogeneticExperimentMetadata:
-    stimulation_software: Bonsai v2.6.3 + Arduino IDE
-
-  # Use OptogeneticEpochsTable for pulse-train / epoch-level stimulation parameters
+    rows:
+      gpe_right:
+        excitation_source_metadata_key: excitation_source  # key in Devices
+        optical_fiber_metadata_key: optical_fiber          # key in Devices
+        effector_metadata_key: chr2
+  stimulation_software: Bonsai v2.6.3 + Arduino IDE
   OptogeneticEpochsTable:
     name: optogenetic_epochs
     description: Metadata about optogenetic stimulation parameters per epoch.
-
-  # Use OptogeneticPulsesTable for individual pulse timing and power (optional)
-  OptogeneticPulsesTable:
+  OptogeneticPulsesTable:          # only when pulse-level timing is available
     name: optogenetic_pulses
     description: Metadata about optogenetic stimulation per pulse.
 ```
