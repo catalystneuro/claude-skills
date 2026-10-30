@@ -53,7 +53,8 @@ Phase 7.
 
 Brain-region `location` fields include `ElectrodeGroup.location`, the `location` column of
 the electrodes table, `ImagingPlane.location`, `IntracellularElectrode.location`,
-`OptogeneticStimulusSite.location`, and the `location` column of a `FiberPhotometryTable`.
+`ViralVectorInjection.location` (ndx-ophys-devices, used by ndx-fiber-photometry and
+ndx-optogenetics), and the `location` column of a `FiberPhotometryTable`.
 
 These are the fields with well-established registries. If another field in this dataset has
 an obvious registered identifier, add it, using a prefix registered at

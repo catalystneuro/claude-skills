@@ -13,10 +13,12 @@ Do **not** use `nwbfile.create_ogen_site()` or `pynwb.ogen.OptogeneticSeries` in
 ### Installation
 
 ```bash
-uv pip install ndx-optogenetics
+uv pip install "ndx-optogenetics>=0.4.1,<0.5"
 ```
 
-Dependencies: `pynwb>=3.1.0`, `hdmf>=4.1.0`, `ndx-ophys-devices>=0.3.1`
+Patterns for ndx-optogenetics 0.4.x on ndx-ophys-devices 0.3.x. Pin `ndx-optogenetics>=0.4.1,<0.5`
+in the conversion's dependencies; 0.4.1 caps ndx-ophys-devices below 0.4, whose
+`StereotacticPosition` replaces `FiberInsertion` and the `ViralVectorInjection` coordinate fields.
 
 ### Complete Construction Example
 
@@ -191,6 +193,8 @@ nwbfile.add_time_intervals(opto_pulses_table)
 ## Notes
 
 - `OptogeneticSitesTable` rows link the excitation source, optical fiber, and effector for each stimulation site.
+  Only `effector` is required; leave out `optical_fiber` for stimulation without an implanted fiber (e.g.
+  transcranial or LED-on-skull).
 - `power_in_mW` in the epoch/pulse tables is the per-stimulation power; `power_in_W` on the `ExcitationSource` device is the hardware spec.
 - Brain region names in `fiber_insertion` and `virus_injection` should use standard atlas nomenclature (Allen Brain Atlas for mice).
 - Both `OptogeneticEpochsTable` and `OptogeneticPulsesTable` can be added to the same NWB file if both epoch-level summaries and pulse-level timing are available.
@@ -207,10 +211,10 @@ Optogenetics:
       manufacturer: Omicron
       source_type: laser                  # laser | LED
       excitation_mode: one-photon         # one-photon | two-photon
-      wavelength_range_in_nm: [438.0, 538.0]  # [min, max]; search ranger values in the datasheet if not provided
+      wavelength_range_in_nm: [488.0, 488.0]  # [min, max] from the datasheet; equal values for a single-line laser
 
   ExcitationSource:
-    - name: laser
+    - name: Omicron LuxX+ 488-100
       model: Omicron LuxX+ 488-100 Model  # references ExcitationSourceModel.name
       power_in_W: 0.077
       intensity_in_W_per_m2: 1.0e10
