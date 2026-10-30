@@ -17,8 +17,6 @@ files Spyglass can ingest without errors.
 **Baseline**: Follow **nwb-convert Phase 5** for the general code generation
 workflow. All of the following apply equally to Spyglass conversions:
 
-- **Step 3b** — check the nwb-conversions registry for reusable custom interfaces
-  before writing from scratch
 - **Step 4** — custom DataInterface guidelines (lazy loading, `get_metadata()`
   responsibility, `conversion` parameter, `resolution=-1.0`, NWB type selection table,
   behavioral vs stimulus data, time-series best practices, table best practices,

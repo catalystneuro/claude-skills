@@ -65,7 +65,7 @@ When in doubt, consult these completed ARC conversions:
 2. Be conversational but efficient. Ask about THEIR data.
 3. When you can inspect data files directly, do so rather than asking the user to describe them.
 4. Track progress in `spyglass_notes.md` in the conversion repo.
-5. After each phase, commit and push to the conversion repo.
+5. After each phase, commit to the conversion repo, and push if it has a remote.
 
 ## Conversion Phases
 

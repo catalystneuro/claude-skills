@@ -12,44 +12,25 @@
 - Number of subjects and sessions
 - Any special considerations (multiple probes, multiple FOVs, etc.)
 
-### Step 0a: Create Conversion Repo and Consult Registry
+### Step 0a: Create the Conversion Repo
 
-Before the first user-facing question, set up the conversion repo and check for prior work.
-
-**Create the repo.** The skill calls the nwb-conversions API to create a private repo
-in the `nwb-conversions` GitHub org. The user does NOT need a GitHub account — the API
-handles authentication server-side.
+Before the first user-facing question, create a local git repo for the conversion code.
 
 ```bash
-# API base URL (Cloudflare Worker)
-NWB_API="https://nwb-conversions-api.ben-dichter.workers.dev"
-
 # Derive lab name from user context (ask if unclear)
 LAB_NAME="<lab-name>"
 REPO_NAME="${LAB_NAME}-to-nwb"
 
-# Create repo via API
-RESPONSE=$(curl -sf -X POST "${NWB_API}/repos" \
-  -H "Content-Type: application/json" \
-  -d "{\"lab_name\": \"${LAB_NAME}\"}")
-
-if [ $? -eq 0 ]; then
-    PUSH_URL=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['push_url'])")
-    mkdir "${REPO_NAME}" && cd "${REPO_NAME}"
-    git init
-    git remote add origin "${PUSH_URL}"
-    git config user.name "nwb-conversions-bot"
-    git config user.email "nwb-conversions-bot@users.noreply.github.com"
-else
-    # API unreachable — work locally only
-    mkdir "${REPO_NAME}" && cd "${REPO_NAME}"
-    git init
-fi
+mkdir "${REPO_NAME}" && cd "${REPO_NAME}"
+git init
 ```
 
-If the API is unreachable, inform the user:
-> I'll create a local conversion repo to organize the code. The conversion registry
-> is not available right now, but this won't affect the conversion itself.
+Pushing to GitHub is optional. If the user wants the repo on GitHub, ask for the remote URL
+(an empty repo under their own account or their lab's organization) and add it:
+
+```bash
+git remote add origin <remote-url>
+```
 
 All subsequent file creation should happen INSIDE this repo directory. When a remote
 is configured, the skill pushes after every phase.
@@ -92,49 +73,8 @@ EOF
 
 git add .gitignore
 git commit -m "Initial commit: add .gitignore"
-if git remote get-url origin &>/dev/null; then git push; fi
+if git remote get-url origin &>/dev/null; then git push -u origin HEAD; fi
 ```
-
-**Fetch the conversion registry** to find similar prior conversions:
-```bash
-curl -sf "${NWB_API}/registry" > /tmp/registry.yaml || true
-```
-
-If the API is unreachable or the registry is empty, skip registry consultation and
-proceed directly to the opening questions.
-
-**Search the registry** for relevant prior work. Look for matches on:
-- Same species
-- Same modalities (ecephys, ophys, behavior, icephys)
-- Same file formats or interfaces
-- Same recording systems (SpikeGLX, OpenEphys, Suite2p, etc.)
-
-```python
-import yaml
-from pathlib import Path
-
-registry_path = Path("/tmp/registry.yaml")
-if registry_path.exists() and registry_path.stat().st_size > 0:
-    with open(registry_path) as f:
-        registry = yaml.safe_load(f)
-
-    # Find conversions with matching modalities
-    target_modalities = {"ecephys", "behavior"}  # from user description
-    for conv in registry.get("conversions", []):
-        overlap = target_modalities & set(conv.get("modalities", []))
-        if overlap:
-            print(f"Similar: {conv['id']} ({conv['repo']})")
-            print(f"  Modalities: {conv['modalities']}")
-            print(f"  Interfaces: {conv['interfaces']}")
-            if conv.get("lessons"):
-                print(f"  Lessons: {conv['lessons']}")
-```
-
-If you find relevant prior conversions, mention them to the user:
-> I found N similar conversions in our registry that used the same recording system /
-> modalities. I'll use those as references as we build yours.
-
-If the registry is empty or has no matches, proceed normally — this is expected for early conversions.
 
 ### Step 0b: Check Environment
 
@@ -362,9 +302,10 @@ Unless the skill was invoked with `--stacked`, ask once, with the first round of
 > 1. As a single repository (default)
 > 2. Split into one pull request per data stream, so each stream can be reviewed and merged on its own
 
-Either way the conversion runs straight through without waiting for review. For the stacked
-option, confirm that `gh` is authenticated with push access to the conversion repo, and follow
-`knowledge/stacked-prs.md` from here on.
+Either way the conversion runs straight through without waiting for review. The stacked
+option needs a GitHub remote: if Step 0a did not add one, add it now and run
+`git push -u origin HEAD`. Confirm that `gh` is authenticated with push access to the
+conversion repo, and follow `knowledge/stacked-prs.md` from here on.
 
 ### Follow-up Questions (ask as needed)
 
