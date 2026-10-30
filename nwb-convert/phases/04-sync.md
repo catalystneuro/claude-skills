@@ -25,20 +25,36 @@ behavioral events won't align with neural data.
 **Pattern 2: TTL pulse alignment**
 - One system sends TTL pulses that are recorded by another
 - E.g., behavior computer sends trial start TTLs recorded on SpikeGLX NIDQ channel
-- Action: Extract TTL times from both streams, use as alignment anchors
+- Action: Extract TTL times from both streams, use as alignment anchors. Use NeuroConv's helpers
+  for edge detection and alignment instead of thresholding and interpolating by hand.
 
 ```python
-# In NWBConverter.temporally_align_data_interfaces():
-from spikeinterface.extractors import SpikeGLXRecordingExtractor
-nidq_recording = SpikeGLXRecordingExtractor(folder_path=path, stream_id="nidq")
-nidq_data = nidq_recording.get_traces(channel_ids=["nidq#XA2"])
-# Find rising edges
-rising_edges = np.where(np.diff((nidq_data > threshold).astype(int)) > 0)[0]
-ttl_times_neural = rising_edges / nidq_recording.get_sampling_frequency()
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import SpikeGLXNIDQInterface
 
-# Compare with behavioral event times to compute offset
-offset = np.mean(ttl_times_neural[:n] - behavioral_event_times[:n])
+
+class MyConverter(NWBConverter):
+    data_interface_classes = dict(NIDQ=SpikeGLXNIDQInterface, Behavior=MyBehaviorInterface)
+
+    def temporally_align_data_interfaces(self, metadata=None, conversion_options=None):
+        nidq_interface = self.data_interface_objects["NIDQ"]
+        behavior_interface = self.data_interface_objects["Behavior"]
+
+        # Rising-edge times on the NIDQ clock. Name the channel as the board does ("XA2", not "nidq#XA2").
+        ttl_times = nidq_interface.get_event_times_from_ttl(channel_name="XA2")
+
+        # The same events as logged on the behavior clock
+        behavior_sync_times = ...
+        behavior_interface.align_by_interpolation(
+            unaligned_timestamps=behavior_sync_times,
+            aligned_timestamps=ttl_times[: len(behavior_sync_times)],
+        )
 ```
+
+For TTLs recorded by other systems, read the trace and pass it to
+`neuroconv.tools.signal_processing.get_rising_frames_from_ttl(trace, threshold=None)` (or
+`get_falling_frames_from_ttl`). It returns frame indices; index the stream's timestamps with them
+(`timestamps[rising_frames]`) so the stream's start time is kept. The threshold defaults to the trace mean.
 
 **Pattern 3: Starting time offset**
 - Streams start at different times but run at the same rate
@@ -59,6 +75,9 @@ interface.align_by_interpolation(
     aligned_timestamps=sync_times_in_reference_clock
 )
 ```
+
+This uses `np.interp`, so timestamps outside the range of the sync times are clamped to the first or
+last aligned value. `TimeIntervalsInterface.align_by_interpolation` also takes a `column` argument.
 
 **Pattern 5: Frame-based alignment (imaging)**
 - Behavioral data logged per imaging frame

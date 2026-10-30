@@ -922,36 +922,7 @@ def temporally_align_data_interfaces(self, metadata=None, conversion_options=Non
                 video_interface.set_aligned_timestamps(video_timestamps + time_shift)
 ```
 
-### Real-world example: Sync channel alignment (giocomo wen22)
-
-The wen22 conversion computes an offset between behavioral timestamps and neural recording timestamps using an NI-DAQ sync channel:
-
-```python
-def calculate_behavioral_offset_with_nidq_channel(self, df_epochs):
-    """Calculate offset between behavioral timestamps and NIDQ sync pulses."""
-    session_path = Path(self.source_data["session_path"])
-    nidq_file_path = session_path / f"{session_path.stem.replace('g0', 'g0_t0')}.nidq.bin"
-
-    if nidq_file_path.is_file():
-        nidq_extractor = SpikeGLXRecordingExtractor(session_path, stream_id="nidq")
-        epoch_change_trace = nidq_extractor.get_traces(channel_ids=["nidq#XA2"]).ravel()
-        times = nidq_extractor.get_times()
-
-        # Binarize the sync signal
-        epoch_change_trace_bin = np.zeros(epoch_change_trace.shape, dtype=int)
-        epoch_change_trace_bin[epoch_change_trace > (np.max(epoch_change_trace) // 2)] = 1
-        epoch_start_idxs = np.where(np.diff(epoch_change_trace_bin) > 0)[0]
-
-        df_epochs["epoch_start_by_niqd"] = times[epoch_start_idxs][:df_epochs.shape[0]]
-        offset = (df_epochs["start_time"] - df_epochs["epoch_start_by_niqd"]).mean()
-        return offset
-    return 0
-```
-
-Then all behavioral timestamps are shifted by this offset:
-```python
-df_position_data["timestamps"] -= offset_for_behavioral_time_stamps
-```
+For TTL-based and interpolation examples, see the synchronization patterns in `conversion-patterns.md`.
 
 ### Alignment API summary
 
@@ -962,7 +933,8 @@ These methods exist on `BaseTemporalAlignmentInterface`. A custom interface that
 | `interface.get_original_timestamps()` | Get timestamps before any alignment |
 | `interface.set_aligned_timestamps(timestamps)` | Replace all timestamps |
 | `interface.set_aligned_starting_time(t)` | Shift starting time for regularly sampled data |
-| `interface.align_by_interpolation(unaligned_timestamps, aligned_timestamps)` | Map timestamps onto another clock using paired sync times |
+| `interface.align_by_interpolation(unaligned_timestamps, aligned_timestamps)` | Map this interface's clock onto the reference clock through matched sync times |
+| `SpikeGLXNIDQInterface.get_event_times_from_ttl(channel_name)` | Rising-edge times of a TTL on a NIDQ channel (`"XA2"`) |
 | `interface.set_aligned_interval_times(start_times, stop_times)` | Custom method for interval-based interfaces |
 
 ---

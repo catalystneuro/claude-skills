@@ -259,34 +259,26 @@ Pass plain arrays (or a `SliceableDataChunkIterator` for data larger than memory
 ### wen22: NIDQ TTL-based offset
 
 ```python
-from spikeinterface.extractors import SpikeGLXRecordingExtractor
 import numpy as np
+from neuroconv.datainterfaces import SpikeGLXNIDQInterface
 
-nidq = SpikeGLXRecordingExtractor(folder_path=spikeglx_path, stream_id="nidq")
-signal = nidq.get_traces(channel_ids=["nidq#XA2"]).flatten()
-binary = (signal > signal.max() / 2).astype(int)
-rising_edges = np.where(np.diff(binary) > 0)[0]
-ttl_times = rising_edges / nidq.get_sampling_frequency()
+nidq_interface = SpikeGLXNIDQInterface(folder_path=spikeglx_path)
+ttl_times = nidq_interface.get_event_times_from_ttl(channel_name="XA2")
 
 # Compare with behavioral epoch boundaries to get offset
-offset = np.mean(ttl_times[:n] - behavioral_epoch_times[:n])
-# Shift all behavioral timestamps
-behavioral_timestamps += offset
+n = len(behavioral_epoch_times)
+offset = np.mean(ttl_times[:n] - behavioral_epoch_times)
+behavior_interface.set_aligned_timestamps(behavior_interface.get_timestamps() + offset)
 ```
 
 ### reimer-arenkiel: Multi-clock interpolation
 
 ```python
-from scipy.interpolate import interp1d
-
-# Map behavior clock → odor clock
-interp_func = interp1d(
-    behavior_scan_times,
-    odor_scan_times[:len(behavior_scan_times)],
-    kind="linear",
-    fill_value="extrapolate",
+# Map behavior clock to odor clock
+behavior_interface.align_by_interpolation(
+    unaligned_timestamps=behavior_scan_times,
+    aligned_timestamps=odor_scan_times[: len(behavior_scan_times)],
 )
-aligned_times = interp_func(behavior_timestamps)
 ```
 
 ### ophys: Frame-rate inference from DataFrame
