@@ -7,10 +7,15 @@ Construction patterns for patch clamp / intracellular recording data.
 ```python
 from pynwb.icephys import IntracellularElectrode
 
+device_model = nwbfile.create_device_model(
+    name="MultiClamp 700B",
+    manufacturer="Molecular Devices",
+    description="Patch clamp amplifier",
+)
 device = nwbfile.create_device(
     name="Amplifier",
-    description="MultiClamp 700B",
-    manufacturer="Molecular Devices",
+    description="Patch clamp amplifier, rig 1",
+    model=device_model,
 )
 
 electrode = nwbfile.create_icephys_electrode(
@@ -163,15 +168,20 @@ Rows added without a template then get an empty reference.
 
 ## Metadata YAML Template
 
-NeuroConv keys devices and electrodes by a metadata key; an electrode links its device
-with `device_metadata_key`.
+NeuroConv keys devices, device models, and electrodes by a metadata key; an electrode links its
+device with `device_metadata_key`, and a device links its model with `device_model_metadata_key`.
 
 ```yaml
+DeviceModels:
+  multiclamp_700b:
+    name: MultiClamp 700B
+    manufacturer: Molecular Devices
+    description: Patch clamp amplifier
 Devices:
   amplifier:
     name: Amplifier
-    description: MultiClamp 700B patch clamp amplifier
-    manufacturer: Molecular Devices
+    description: Patch clamp amplifier, rig 1
+    device_model_metadata_key: multiclamp_700b
 Icephys:
   IntracellularElectrodes:
     electrode_0:
