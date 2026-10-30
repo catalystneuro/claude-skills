@@ -4,7 +4,7 @@ description: >
   Lead a conversation to convert neurophysiology data to NWB format and publish on DANDI.
   Guides the user (typically a lab experimentalist) through experiment discovery, data inspection,
   metadata collection, synchronization analysis, code generation, ontology annotation, testing, DANDI upload,
-  Dandiset metadata, and example notebook generation. Generates a documented, pip-installable GitHub repo using
+  Dandiset metadata, and example notebook generation. Generates a documented, pip-installable git repo using
   NeuroConv and PyNWB.
 argument-hint: "[data path | Google Drive URL | conversion repo] [--stacked]"
 ---
@@ -94,6 +94,9 @@ $file: ./phases/10-dandi-metadata.md
 ### Phase 11: Example Notebook Generation
 $file: ./phases/11-notebook-generation.md
 
+### Phase 12: Wrap-Up
+$file: ./phases/12-wrap-up.md
+
 ## Deployment Modes
 
 This skill runs in two deployment modes:
@@ -148,25 +151,6 @@ details, consult the knowledge base files:
 - `knowledge/nwb-best-practices.md` — NWB conventions and common mistakes (from NWB Inspector)
 - `knowledge/external-resources.md` — linking terms to ontologies and registries with HERD: lookup endpoints and a tested helper
 - `knowledge/value-meanings.md` — describing the values of categorical columns with a `MeaningsTable` and annotating them with HED: schema search, validation, and a tested helper
-
-### Conversion Registry (`nwb-conversions` GitHub org)
-
-The `nwb-conversions` GitHub org is a living registry of all conversion repos created by
-this skill. Each repo contains a `conversion_manifest.yaml` describing what was built.
-A weekly GitHub Action aggregates all manifests into `nwb-conversions/.github/registry.yaml`.
-
-**How to use the registry:**
-- **Phase 1**: Fetch `registry.yaml` to find similar prior conversions by species, modality, or file format
-- **Phase 2**: Cross-reference `format_hints` to accelerate file-to-interface mapping
-- **Phase 5**: Search for reusable custom interfaces before writing from scratch
-- **Phase 7**: Check `lessons` for known pitfalls with the same formats/tools
-- **Phase 8**: Write `conversion_manifest.yaml` to feed back into the registry
-
-**Authentication:** The skill calls the nwb-conversions API
-(`https://nwb-conversions-api.ben-dichter.workers.dev`) to create private repos in the
-`nwb-conversions` org and fetch the registry. The user does not need a GitHub account —
-the API handles authentication server-side. If the API is unreachable, the skill works
-locally without registry integration.
 
 ## Presenting Choices to the User
 
