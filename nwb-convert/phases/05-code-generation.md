@@ -251,6 +251,7 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 - `knowledge/pynwb-images.md` — image data and external video files
 - `knowledge/pynwb-advanced-io.md` — compression, chunking, iterative write for large data
 - `knowledge/ndx-fiber-photometry.md` — ndx-fiber-photometry extension (REQUIRED for fiber photometry)
+- `knowledge/ndx-ophys-devices.md`: optical devices, viral vectors, injections, indicators, and effectors shared by ndx-fiber-photometry and ndx-optogenetics
 - `knowledge/ndx-pose.md` — ndx-pose extension for pose estimation (DeepLabCut, SLEAP, Lightning Pose)
 - `knowledge/ndx-anatomical-localization.md` — ndx-anatomical-localization for electrode/imaging plane atlas registration
 
