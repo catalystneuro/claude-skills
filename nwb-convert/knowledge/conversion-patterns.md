@@ -219,19 +219,9 @@ for _, row in trials_df.iterrows():
     )
 ```
 
-### Creating Events (core pynwb EventsTable)
+### Creating Events
 
-Prefer a NeuroConv events interface (see the `events` category of
-`neuroconv-interfaces.yaml`) when one reads the source format. Otherwise:
-
-```python
-from pynwb.event import EventsTable
-
-lick_events = EventsTable(name="lick_times", description="Times of lick events")
-for timestamp in lick_timestamps:
-    lick_events.add_row(timestamp=timestamp)
-nwbfile.add_events_table(lick_events)
-```
+See the `EventsTable` section of `knowledge/pynwb-behavior.md`.
 
 ### Using H5DataIO for compression
 
