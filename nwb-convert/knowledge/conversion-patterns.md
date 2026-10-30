@@ -102,23 +102,45 @@ Key considerations:
 - Add behavioral data as `BehavioralTimeSeries` in `processing["behavior"]`
 - Add stimulus data via `nwbfile.add_stimulus()`
 
-Ophys metadata YAML should include device and imaging plane info:
+Ophys metadata YAML should include device and imaging plane info, in the dict format that `get_metadata()`
+returns. Print `converter.get_metadata()` and each ophys interface's `get_metadata_template()` first and write the
+YAML in that shape. `MicroscopySeries` and `PlaneSegmentations` are keyed by each interface's `metadata_key`
+(defaults: `sbx_imaging` for `SbxImagingInterface`, `suite2p_segmentation_chan1_plane0` for
+`Suite2pSegmentationInterface`). Entries in the old list format (`Ophys: Device: - name: ...`) are ignored
+without an error.
 
 ```yaml
+DeviceModels:
+  microscope_model:
+    name: Neurolabware two-photon microscope
+    manufacturer: Neurolabware  # or Bruker, Thorlabs, etc.
+    description: Resonant scanning two-photon microscope
+Devices:
+  microscope:
+    name: Microscope
+    description: Two-photon resonant scanning microscope
+    device_model_metadata_key: microscope_model
 Ophys:
-  Device:
-    - name: Microscope
-      description: Two-photon resonant scanning microscope
-      manufacturer: Neurolabware  # or Bruker, Thorlabs, etc.
-  ImagingPlane:
-    - name: ImagingPlane
+  ImagingPlanes:
+    imaging_plane:
+      name: ImagingPlane
       description: Imaging plane in hippocampal CA1
       excitation_lambda: 920.0
       indicator: GCaMP6f
       location: CA1
-  TwoPhotonSeries:
-    - name: TwoPhotonSeries
+      device_metadata_key: microscope
+      optical_channel:
+        - name: Green
+          description: GCaMP6f emission
+          emission_lambda: 510.0
+  MicroscopySeries:
+    sbx_imaging:
+      name: TwoPhotonSeries
       description: Two-photon calcium imaging data
+      imaging_plane_metadata_key: imaging_plane
+  PlaneSegmentations:
+    suite2p_segmentation_chan1_plane0:
+      imaging_plane_metadata_key: imaging_plane
 ```
 
 ## Common Custom Interface Patterns
