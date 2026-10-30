@@ -36,7 +36,7 @@
 ### Modality-Specific Metadata
 
 **For ophys (calcium imaging) experiments, also ask:**
-- What brain region were you imaging? (e.g., "CA1", "V1", "mPFC")
+- What brain region were you imaging? (Allen CCF terms for mice, e.g., "CA1", "VISp", "PL")
 - What calcium indicator did you use? (e.g., "GCaMP6f", "GCaMP7f", "jRGECO1a")
 - What was the excitation wavelength? (e.g., 920 nm for GCaMP, 1040 nm for jRGECO)
 - What objective did you use? (e.g., "Nikon 16x/0.8w")
@@ -64,7 +64,7 @@ Ophys:
 - Do you have histology-confirmed electrode locations? (If so, these should override intended targets)
 
 These are usually auto-extracted from SpikeGLX/OpenEphys metadata, but confirm with the user.
-Note: every electrode MUST have a `location` value — use "unknown" if the region is truly unknown.
+Note: every electrode MUST have a `location` value. If the region is truly unknown, use "unknown" and expect the Inspector's Allen CCF warning for mouse subjects.
 
 **Session-specific (often extracted from data):**
 - `session_start_time` — MUST include timezone (e.g., America/New_York)
@@ -143,12 +143,12 @@ if git remote get-url origin &>/dev/null; then git push; fi
 You MUST collect subject-level metadata for each subject. This is required for DANDI upload.
 
 For each subject, collect:
-- `subject_id` — **Required**. Unique identifier.
-- `species` — **Required**. Latin binomial (e.g., "Mus musculus", "Rattus norvegicus").
-- `sex` — **Recommended**. One of "M", "F", "U", "O".
-- `date_of_birth` — **Recommended**. Or `age` per session as ISO 8601 duration (e.g., "P90D").
+- `subject_id` — **Required for DANDI**. Unique identifier, no `/`.
+- `species` — **Required for DANDI**. Latin binomial (e.g., "Mus musculus", "Rattus norvegicus").
+- `sex` — **Required for DANDI**. One of "M", "F", "U", "O".
+- `date_of_birth` or `age` — **Required for DANDI** (at least one). `age` per session as ISO 8601 duration (e.g., "P90D").
 - `genotype` — **Recommended** if transgenic.
-- `weight` — **Recommended**. At time of experiment or implant.
+- `weight` — **Recommended**. At time of experiment or implant, as "<number> <unit>" with unit one of kg, g, mg, ug, ng, pg.
 - `strain` — **Recommended** (e.g., "C57BL/6J").
 
 If there are multiple subjects, create a `subject_metadata.yaml` (or `.json`) keyed by
