@@ -16,7 +16,7 @@ A conversion repo has this exact layout:
 │       └── test-install.yml      # Monthly CI: install + import test
 ├── .gitignore
 ├── .pre-commit-config.yaml       # black, ruff, codespell, trailing whitespace
-├── LICENSE                       # BSD-3
+├── LICENSE                       # MIT
 ├── README.md
 ├── make_env.yml                  # Conda environment definition
 ├── pyproject.toml                # Build config, deps, tooling
@@ -26,9 +26,9 @@ A conversion repo has this exact layout:
         ├── <conversion_a>/       # One directory per conversion/experiment
         │   ├── __init__.py       # Exports the NWBConverter and custom interfaces
         │   ├── <conversion_a>_nwbconverter.py
-        │   ├── <conversion_a>_convert_session.py
-        │   ├── <conversion_a>_convert_all_sessions.py
-        │   ├── <conversion_a>_metadata.yaml
+        │   ├── convert_session.py
+        │   ├── convert_all_sessions.py
+        │   ├── metadata.yaml
         │   ├── <custom_interface_1>.py
         │   ├── <custom_interface_2>.py
         │   ├── interfaces/       # Optional: subdirectory if many interfaces
@@ -50,9 +50,10 @@ A conversion repo has this exact layout:
 | Conversion directory | `<first_author><year>` or descriptive name | `zaki_2024`, `wen22` |
 | NWBConverter class | `<ConversionCamelCase>NWBConverter` | `Zaki2024NWBConverter` |
 | Interface class | `<ConversionCamelCase><Modality>Interface` | `Zaki2024ShockStimuliInterface` |
-| Metadata file | `<conversion_name>_metadata.yaml` | `zaki_2024_metadata.yaml` |
-| Convert session script | `<conversion_name>_convert_session.py` | `zaki_2024_convert_session.py` |
-| Convert all script | `<conversion_name>_convert_all_sessions.py` | `zaki_2024_convert_all_sessions.py` |
+| NWBConverter module | `<conversion_name>_nwbconverter.py` | `zaki_2024_nwbconverter.py` |
+| Metadata file | `metadata.yaml` | `metadata.yaml` |
+| Convert session script | `convert_session.py` | `convert_session.py` |
+| Convert all script | `convert_all_sessions.py` | `convert_all_sessions.py` |
 
 ### The `__init__.py` files
 
@@ -90,7 +91,7 @@ description = "NWB conversion scripts, functions, and classes for <Lab Name> lab
 readme = "README.md"
 authors = [{ name = "CatalystNeuro", email = "ben.dichter@catalystneuro.com" }]
 maintainers = [{ name = "CatalystNeuro", email = "ben.dichter@catalystneuro.com" }]
-license = { file = "LICENSE" }
+license = "MIT"
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3.10",
@@ -127,18 +128,8 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build]
-include = [
-  "*.yaml",
-  "*.yml",
-  "*.json",
-]  # Ensures metadata YAML files are included in sdist and wheel
-
 [tool.hatch.build.targets.wheel]
-packages = ["src/<lab>_lab_to_nwb"]
-
-[tool.hatch.build.targets.sdist]
-packages = ["src/<lab>_lab_to_nwb"]
+packages = ["src/<lab>_lab_to_nwb"]  # YAML/JSON files inside the package are included by default
 
 [tool.ruff]
 
@@ -306,7 +297,6 @@ This is the script that converts a single session. It follows a strict pattern:
 ```python
 """Primary script to run to convert an entire session of data using the NWBConverter."""
 from pathlib import Path
-from typing import Union
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -316,8 +306,8 @@ from <lab>_lab_to_nwb.<conversion_name>.<conversion_name>_nwbconverter import <C
 
 
 def session_to_nwb(
-    data_dir_path: Union[str, Path],
-    output_dir_path: Union[str, Path],
+    data_dir_path: str | Path,
+    output_dir_path: str | Path,
     stub_test: bool = False,
 ):
     data_dir_path = Path(data_dir_path)
@@ -364,7 +354,7 @@ def session_to_nwb(
     metadata["NWBFile"]["session_start_time"] = session_start_time
 
     # Layer 3: Merge in the hand-edited YAML metadata
-    editable_metadata_path = Path(__file__).parent / "<conversion_name>_metadata.yaml"
+    editable_metadata_path = Path(__file__).parent / "metadata.yaml"
     editable_metadata = load_dict_from_file(editable_metadata_path)
     metadata = dict_deep_update(metadata, editable_metadata)
 
@@ -383,7 +373,7 @@ def session_to_nwb(
 
 if __name__ == "__main__":
     data_dir_path = Path("/path/to/raw/data/")
-    output_dir_path = Path("~/conversion_nwb/")
+    output_dir_path = Path("~/conversion_nwb").expanduser()
     stub_test = False
 
     session_to_nwb(
@@ -503,110 +493,64 @@ This script handles batch conversion of all sessions in a dataset. It follows a 
 
 ```python
 """Primary script to run to convert all sessions in a dataset using session_to_nwb."""
-from pathlib import Path
-from typing import Union
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from pprint import pformat
 import traceback
-from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+from pprint import pformat
 
-from .convert_session import session_to_nwb
-
-
-def dataset_to_nwb(
-    *,
-    data_dir_path: Union[str, Path],
-    output_dir_path: Union[str, Path],
-    max_workers: int = 1,
-    verbose: bool = True,
-    stub_test: bool = False,
-):
-    """Convert the entire dataset to NWB.
-
-    Parameters
-    ----------
-    data_dir_path : Union[str, Path]
-        The path to the directory containing the raw data.
-    output_dir_path : Union[str, Path]
-        The path to the directory where the NWB files will be saved.
-    max_workers : int, optional
-        The number of workers to use for parallel processing, by default 1
-    verbose : bool, optional
-        Whether to print verbose output, by default True
-    stub_test : bool, optional
-        Whether to run in stub test mode, by default False
-    """
-    data_dir_path = Path(data_dir_path)
-    output_dir_path = Path(output_dir_path)
-    session_to_nwb_kwargs_per_session = get_session_to_nwb_kwargs_per_session(
-        data_dir_path=data_dir_path,
-    )
-
-    futures = []
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        for session_to_nwb_kwargs in session_to_nwb_kwargs_per_session:
-            session_to_nwb_kwargs["output_dir_path"] = output_dir_path
-            session_to_nwb_kwargs["verbose"] = verbose
-            session_to_nwb_kwargs["stub_test"] = stub_test
-            exception_file_path = (
-                data_dir_path / f"ERROR_{session_to_nwb_kwargs.get('session_id', 'unknown')}.txt"
-            )
-            futures.append(
-                executor.submit(
-                    safe_session_to_nwb,
-                    session_to_nwb_kwargs=session_to_nwb_kwargs,
-                    exception_file_path=exception_file_path,
-                )
-            )
-        for _ in tqdm(as_completed(futures), total=len(futures)):
-            pass
+from <lab>_lab_to_nwb.<conversion_name>.convert_session import session_to_nwb
 
 
-def safe_session_to_nwb(
-    *,
-    session_to_nwb_kwargs: dict,
-    exception_file_path: Union[Path, str],
-):
-    """Convert a session to NWB while handling any errors by writing to exception_file_path."""
-    exception_file_path = Path(exception_file_path)
-    try:
-        session_to_nwb(**session_to_nwb_kwargs)
-    except Exception as e:
-        with open(exception_file_path, mode="w") as f:
-            f.write(f"session_to_nwb_kwargs: \n {pformat(session_to_nwb_kwargs)}\n\n")
-            f.write(traceback.format_exc())
-
-
-def get_session_to_nwb_kwargs_per_session(
-    *,
-    data_dir_path: Union[str, Path],
-):
-    """Get the kwargs for session_to_nwb for each session in the dataset.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        A list of dictionaries containing the kwargs for session_to_nwb for each session.
-    """
-    # IMPLEMENT THIS: Return a list of dicts, each containing the kwargs for one session.
-    # Common strategies:
-    #   1. Iterate over session directories: list(data_dir_path.iterdir())
+def get_session_to_nwb_kwargs_per_session(data_dir_path: Path) -> list[dict]:
+    """Return one dict of session_to_nwb arguments per session, e.g. dict(data_dir_path=session_dir_path)."""
+    # IMPLEMENT THIS. Common strategies:
+    #   1. Iterate over session directories: sorted(data_dir_path.iterdir())
     #   2. Read from a spreadsheet/CSV with session metadata
     #   3. Load from a pre-computed YAML parameters file
     raise NotImplementedError
 
 
-if __name__ == "__main__":
-    data_dir_path = Path("/path/to/raw/data/")
-    output_dir_path = Path("~/conversion_nwb/")
-    max_workers = 1
-    stub_test = False
+def safe_session_to_nwb(session_to_nwb_kwargs: dict, exception_file_path: Path):
+    """Run session_to_nwb and write any exception to exception_file_path."""
+    try:
+        session_to_nwb(**session_to_nwb_kwargs)
+    except Exception:
+        with open(exception_file_path, mode="w") as file:
+            file.write(f"session_to_nwb_kwargs:\n{pformat(session_to_nwb_kwargs)}\n\n")
+            file.write(traceback.format_exc())
 
+
+def dataset_to_nwb(
+    data_dir_path: str | Path,
+    output_dir_path: str | Path,
+    max_workers: int = 1,
+    stub_test: bool = False,
+):
+    """Convert every session in data_dir_path; failed sessions write a traceback to output_dir_path/exceptions."""
+    data_dir_path = Path(data_dir_path)
+    output_dir_path = Path(output_dir_path)
+    exception_dir_path = output_dir_path / "exceptions"
+    exception_dir_path.mkdir(parents=True, exist_ok=True)
+
+    session_to_nwb_kwargs_per_session = get_session_to_nwb_kwargs_per_session(data_dir_path=data_dir_path)
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for session_to_nwb_kwargs in session_to_nwb_kwargs_per_session:
+            session_to_nwb_kwargs.update(output_dir_path=output_dir_path, stub_test=stub_test)
+            session_name = Path(session_to_nwb_kwargs["data_dir_path"]).name
+            exception_file_path = exception_dir_path / f"{session_name}.txt"
+            futures.append(executor.submit(safe_session_to_nwb, session_to_nwb_kwargs, exception_file_path))
+        for future in as_completed(futures):
+            future.result()
+
+
+if __name__ == "__main__":
     dataset_to_nwb(
-        data_dir_path=data_dir_path,
-        output_dir_path=output_dir_path,
-        max_workers=max_workers,
-        stub_test=stub_test,
+        data_dir_path=Path("/path/to/raw/data/"),
+        output_dir_path=Path("~/conversion_nwb").expanduser(),
+        max_workers=1,
+        stub_test=False,
     )
 ```
 
@@ -614,7 +558,7 @@ if __name__ == "__main__":
 
 - **`ProcessPoolExecutor`**: Enables parallel conversion of sessions. Default `max_workers=1` for sequential processing.
 - **`safe_session_to_nwb`**: Wraps `session_to_nwb` in a try/except that writes errors to a file instead of crashing the batch. This is critical for large datasets.
-- **`get_session_to_nwb_kwargs_per_session`**: This is the function that must be customized per conversion. It returns a list of dicts, where each dict contains exactly the kwargs needed by `session_to_nwb`.
+- **`get_session_to_nwb_kwargs_per_session`**: This is the function that must be customized per conversion. It returns a list of dicts, where each dict contains exactly the per-session arguments of `session_to_nwb`. `dataset_to_nwb` adds `output_dir_path` and `stub_test`; any other key raises a TypeError for every session.
 
 ### Real-world example of `get_session_to_nwb_kwargs_per_session` (cai-lab-to-nwb)
 
@@ -797,10 +741,9 @@ NWBFile:
   related_publications:
     - https://doi.org/10.1038/s41586-024-08168-4
   session_description: >
-    A rich text description of the experiment. Can also just be the abstract
-    of the publication. This is REQUIRED by NWB.
+    Describe what happened in this session. This is REQUIRED by NWB.
   experiment_description: >
-    Optional longer description of the experimental protocol.
+    Scientific goal of the experiment; the paper abstract is fine here.
   institution: Icahn School of Medicine at Mount Sinai
   lab: Cai
   experimenter:
@@ -889,7 +832,7 @@ N2:
   strain: C57Bl/6
   genotype: wildtype
   date_of_birth: 2019-10-22
-  weight: 0.016
+  weight: 0.016 kg
   sex: U
 ```
 
@@ -1164,11 +1107,11 @@ jobs:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         python-version: ["3.12"]
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
+    - uses: actions/checkout@v7
+    - uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
-    - run: pip install uv && uv pip install -e .
+    - run: pip install uv && uv pip install --system -e .
     - run: python -c "import <lab>_lab_to_nwb"
 ```
 
@@ -1194,13 +1137,15 @@ channels:
 - conda-forge
 - defaults
 dependencies:
-- python>=3.11
+- python>=3.10
 - pip
 - pip:
   - --editable .
 ```
 
 ### .pre-commit-config.yaml
+
+After writing this file, run `pre-commit autoupdate` to pin the current hook versions.
 
 ```yaml
 repos:
@@ -1241,20 +1186,21 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - run: |
           python -m pip install --upgrade pip build
           python -m build
-      - uses: pypa/gh-action-pypi-publish@v1.4.2
-        with:
-          verbose: true
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+      - uses: pypa/gh-action-pypi-publish@release/v1
 ```
+
+This uses PyPI trusted publishing: register the repository and workflow file as a trusted
+publisher in the PyPI project settings. No API token is needed.
 
 ---
 

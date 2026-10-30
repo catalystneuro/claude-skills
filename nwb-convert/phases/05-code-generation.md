@@ -30,11 +30,11 @@ Create the standard directory structure INSIDE the repo that was created in Phas
 ├── README.md
 ├── make_env.yml
 └── src/
-    └── <lab_name>_to_nwb/
+    └── <lab>_lab_to_nwb/
         ├── __init__.py
         └── <conversion_name>/
             ├── __init__.py
-            ├── <conversion_name>nwbconverter.py
+            ├── <conversion_name>_nwbconverter.py
             ├── convert_session.py
             ├── convert_all_sessions.py
             ├── metadata.yaml
@@ -45,12 +45,12 @@ Create the standard directory structure INSIDE the repo that was created in Phas
 
 ```toml
 [project]
-name = "<lab-name>-lab-to-nwb"
+name = "<lab>-lab-to-nwb"
 version = "0.0.1"
 description = "NWB conversion scripts for the <Lab> Lab."
 readme = "README.md"
-requires-python = ">=3.11"
-license = { text = "MIT" }
+requires-python = ">=3.10"
+license = "MIT"
 authors = [{ name = "CatalystNeuro", email = "ben.dichter@catalystneuro.com" }]
 dependencies = ["neuroconv", "nwbinspector"]
 
@@ -64,12 +64,12 @@ dependencies = ["neuroconv", "nwbinspector"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build]
-include = ["*.yaml", "*.yml", "*.json"]
-
 [tool.hatch.build.targets.wheel]
-packages = ["src/<lab_name>_lab_to_nwb"]
+packages = ["src/<lab>_lab_to_nwb"]
 ```
+
+Hatchling includes the YAML and JSON files inside the package directory in the wheel, so
+no `include` list is needed. Check the build with `uv build` and list the wheel contents.
 
 **Extras for NeuroConv** depend on which interfaces are used:
 - SpikeGLX: `neuroconv[spikeglx]`
@@ -98,7 +98,7 @@ class <ConversionName>NWBConverter(NWBConverter):
         # Names should be descriptive: Recording, LFP, Sorting, Behavior, etc.
     )
 
-    def temporally_align_data_interfaces(self):
+    def temporally_align_data_interfaces(self, metadata: dict | None = None, conversion_options: dict | None = None):
         """Override if sync logic is needed."""
         # Implement sync plan from Phase 4
         pass
@@ -159,6 +159,7 @@ For each data stream that needs custom code:
 ```python
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.utils import DeepDict
+from pydantic import FilePath
 from pynwb.file import NWBFile
 
 
@@ -167,11 +168,11 @@ class <Name>Interface(BaseDataInterface):
 
     keywords = ["<modality>"]
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: FilePath):
         """
         Parameters
         ----------
-        file_path : str
+        file_path : FilePath
             Path to the <format> file.
         """
         super().__init__(file_path=file_path)
@@ -216,13 +217,8 @@ TimeSeries(name="position", data=pos_cm * 0.01, unit="m")
 ```
 This preserves original data values in the file and is more NWB-idiomatic.
 
-**Set `resolution` when unknown**: If you don't know the resolution (smallest meaningful
-difference) of a data stream, explicitly set `resolution=-1.0`. Don't leave it unset.
-
-**Pickle files cannot be lazily loaded.** Unlike HDF5 or binary files, pickle requires
-reading the entire file into memory. This is an acceptable exception to the "load data
-lazily in `__init__`" guideline. If the pickle is very large, consider loading only in
-`add_to_nwbfile()` instead of `__init__()`.
+**Pickle files load whole into memory.** Read them in `add_to_nwbfile()` (or in
+`get_metadata()` if metadata is needed), not in `__init__()`.
 
 **Choosing the right NWB types for custom data:**
 
@@ -359,17 +355,16 @@ Follow the standard pattern:
 
 ```python
 from pathlib import Path
-from typing import Union
 from zoneinfo import ZoneInfo
 
 from neuroconv.utils import load_dict_from_file, dict_deep_update
 
-from <package>.<conversion> import <ConversionName>NWBConverter
+from <lab>_lab_to_nwb.<conversion_name>.<conversion_name>_nwbconverter import <ConversionName>NWBConverter
 
 
 def session_to_nwb(
-    data_dir_path: Union[str, Path],
-    output_dir_path: Union[str, Path],
+    data_dir_path: str | Path,
+    output_dir_path: str | Path,
     stub_test: bool = False,
 ):
     data_dir_path = Path(data_dir_path)
@@ -448,54 +443,65 @@ if __name__ == "__main__":
 
 ### Step 6: Write convert_all_sessions.py
 
+Each dict returned by `get_session_to_nwb_kwargs_per_session` holds exactly the per-session
+arguments of `session_to_nwb`. Failed sessions write their traceback to
+`<output_dir_path>/exceptions/`.
+
 ```python
-from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor
 import traceback
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+from pprint import pformat
 
-from .convert_session import session_to_nwb
+from <lab>_lab_to_nwb.<conversion_name>.convert_session import session_to_nwb
 
 
-def get_session_to_nwb_kwargs_per_session(data_dir_path):
-    """Discover all sessions and return kwargs for each."""
-    # Implement session discovery logic
-    # Return list of dicts, each with kwargs for session_to_nwb
+def get_session_to_nwb_kwargs_per_session(data_dir_path: Path) -> list[dict]:
+    """Return one dict of session_to_nwb arguments per session, e.g. dict(data_dir_path=session_dir_path)."""
     raise NotImplementedError("Implement session discovery")
 
 
-def safe_session_to_nwb(**kwargs):
-    """Wrapper that catches and logs exceptions."""
-    exception_file_path = kwargs.pop("exception_file_path", None)
+def safe_session_to_nwb(session_to_nwb_kwargs: dict, exception_file_path: Path):
+    """Run session_to_nwb and write any exception to exception_file_path."""
     try:
-        session_to_nwb(**kwargs)
+        session_to_nwb(**session_to_nwb_kwargs)
     except Exception:
-        if exception_file_path:
-            with open(exception_file_path, "w") as f:
-                f.write(traceback.format_exc())
-        else:
-            raise
+        with open(exception_file_path, mode="w") as file:
+            file.write(f"session_to_nwb_kwargs:\n{pformat(session_to_nwb_kwargs)}\n\n")
+            file.write(traceback.format_exc())
 
 
 def dataset_to_nwb(
-    data_dir_path,
-    output_dir_path,
-    max_workers=1,
-    stub_test=False,
+    data_dir_path: str | Path,
+    output_dir_path: str | Path,
+    max_workers: int = 1,
+    stub_test: bool = False,
 ):
     data_dir_path = Path(data_dir_path)
     output_dir_path = Path(output_dir_path)
-    exception_dir = output_dir_path / "exceptions"
-    exception_dir.mkdir(parents=True, exist_ok=True)
+    exception_dir_path = output_dir_path / "exceptions"
+    exception_dir_path.mkdir(parents=True, exist_ok=True)
 
-    kwargs_list = get_session_to_nwb_kwargs_per_session(data_dir_path)
+    session_to_nwb_kwargs_per_session = get_session_to_nwb_kwargs_per_session(data_dir_path=data_dir_path)
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        for kwargs in kwargs_list:
-            kwargs["output_dir_path"] = output_dir_path
-            kwargs["stub_test"] = stub_test
-            session_id = kwargs.get("session_id", "unknown")
-            kwargs["exception_file_path"] = str(exception_dir / f"{session_id}.txt")
-            executor.submit(safe_session_to_nwb, **kwargs)
+        futures = []
+        for session_to_nwb_kwargs in session_to_nwb_kwargs_per_session:
+            session_to_nwb_kwargs.update(output_dir_path=output_dir_path, stub_test=stub_test)
+            session_name = Path(session_to_nwb_kwargs["data_dir_path"]).name
+            exception_file_path = exception_dir_path / f"{session_name}.txt"
+            futures.append(executor.submit(safe_session_to_nwb, session_to_nwb_kwargs, exception_file_path))
+        for future in as_completed(futures):
+            future.result()
+
+
+if __name__ == "__main__":
+    dataset_to_nwb(
+        data_dir_path=Path("/path/to/data"),
+        output_dir_path=Path("~/conversion_nwb").expanduser(),
+        max_workers=1,
+        stub_test=False,
+    )
 ```
 
 ### Step 7: Write metadata.yaml
@@ -505,7 +511,7 @@ Use the metadata collected in Phase 3. See Phase 3 for format.
 ### Step 8: Write README.md
 
 ```markdown
-# <lab-name>-lab-to-nwb
+# <lab>-lab-to-nwb
 
 NWB conversion scripts for the [<Lab> Lab](lab_url) data,
 using [NeuroConv](https://github.com/catalystneuro/neuroconv).
@@ -522,7 +528,7 @@ uv pip install -e ".[<conversion_name>]"
 
 ### Single session
 ```python
-from <package>.<conversion>.convert_session import session_to_nwb
+from <lab>_lab_to_nwb.<conversion_name>.convert_session import session_to_nwb
 
 session_to_nwb(
     data_dir_path="/path/to/session",
@@ -533,7 +539,7 @@ session_to_nwb(
 
 ### All sessions
 ```python
-from <package>.<conversion>.convert_all_sessions import dataset_to_nwb
+from <lab>_lab_to_nwb.<conversion_name>.convert_all_sessions import dataset_to_nwb
 
 dataset_to_nwb(
     data_dir_path="/path/to/data",
