@@ -20,7 +20,7 @@ uv pip install -e ".[<conversion_name>]"
 First, run with `stub_test=True` to convert a small subset of data quickly:
 
 ```python
-from <package>.<conversion>.convert_session import session_to_nwb
+from <package>.<conversion_name>.<conversion_name>_convert_session import session_to_nwb
 
 session_to_nwb(
     data_dir_path="/path/to/sample/session",
@@ -29,51 +29,22 @@ session_to_nwb(
 )
 ```
 
-If this fails, debug the error:
-- Import errors → missing dependencies in pyproject.toml
-- File not found → incorrect source_data paths
-- Type errors → incorrect data shapes or types in custom interfaces
-- Schema validation errors → metadata doesn't match expected schema
-
 ### Step 3: Inspect the NWB File
 
 Read back the file and verify contents:
 
 ```python
-from pynwb import NWBHDF5IO
+from hdmf.common import DynamicTable
+from pynwb import NWBHDF5IO, TimeSeries
 
 with NWBHDF5IO("/path/to/output/session.nwb", "r") as io:
     nwbfile = io.read()
-
-    # Check basic metadata
-    print(f"Session: {nwbfile.session_description}")
-    print(f"Start time: {nwbfile.session_start_time}")
-    print(f"Subject: {nwbfile.subject}")
-
-    # Check acquisition data
-    print(f"Acquisition: {list(nwbfile.acquisition.keys())}")
-
-    # Check processing modules
-    for name, module in nwbfile.processing.items():
-        print(f"Processing/{name}: {list(module.data_interfaces.keys())}")
-
-    # Check units
-    if nwbfile.units:
-        print(f"Units: {len(nwbfile.units)} units")
-
-    # Check trials
-    if nwbfile.trials:
-        print(f"Trials: {len(nwbfile.trials)} trials")
-        print(f"Trial columns: {nwbfile.trials.colnames}")
-
-    # Check electrodes
-    if nwbfile.electrodes:
-        print(f"Electrodes: {len(nwbfile.electrodes)} electrodes")
-
-    # Spot-check data values
-    for name, ts in nwbfile.acquisition.items():
-        if hasattr(ts, 'data'):
-            print(f"  {name}: shape={ts.data.shape}, dtype={ts.data.dtype}")
+    print(nwbfile)
+    for neurodata_object in nwbfile.objects.values():
+        if isinstance(neurodata_object, TimeSeries):
+            print(neurodata_object.name, neurodata_object.data.shape, neurodata_object.data.dtype)
+        elif isinstance(neurodata_object, DynamicTable):
+            print(neurodata_object.name, len(neurodata_object), neurodata_object.colnames)
 ```
 
 #### Check the Ontology Annotations
@@ -211,51 +182,23 @@ For critical data streams, compare source and NWB values:
 
 ```python
 import numpy as np
-
-# Example: verify spike times
-with NWBHDF5IO("output.nwb", "r") as io:
-    nwbfile = io.read()
-    nwb_spike_times = nwbfile.units["spike_times"][0]
-
-# Compare with source
 import spikeinterface.extractors as se
-sorting = se.read_phy(phy_path)
-source_spike_times = sorting.get_unit_spike_train(unit_id=0, return_times=True)
+from pynwb import NWBHDF5IO
 
-assert np.allclose(nwb_spike_times, source_spike_times, atol=1e-6)
+# Example: verify spike times against the Phy output, matching units by the unit_name column
+sorting = se.read_phy(phy_folder_path)
+source_unit_ids = {str(unit_id): unit_id for unit_id in sorting.unit_ids}
+
+with NWBHDF5IO("/path/to/output/full_session.nwb", "r") as io:
+    nwbfile = io.read()
+    units = nwbfile.units.to_dataframe()
+    for unit_name, nwb_spike_times in zip(units["unit_name"], units["spike_times"]):
+        source_spike_times = sorting.get_unit_spike_train(unit_id=source_unit_ids[unit_name], return_times=True)
+        np.testing.assert_allclose(nwb_spike_times, source_spike_times, atol=1e-6)
 ```
 
-### Step 7: Iterate
-
-If any issues are found:
-1. Fix the issue in the conversion code
-2. Re-run the stub test
-3. Re-run nwbinspector — confirm zero CRITICAL/BEST_PRACTICE_VIOLATION
-4. Re-run full conversion
-5. Re-validate
-6. Repeat until clean
-
-### Common Debugging Patterns
-
-**Interface won't instantiate:**
-- Check that file paths in source_data are correct
-- Check that the file format is what you think it is
-- Try instantiating the interface in isolation
-
-**Data shapes are wrong:**
-- Print the data shape at each step of custom interface
-- Check if axes need to be transposed
-- Check if time is first dimension (NWB convention)
-
-**Timestamps don't make sense:**
-- Check if timestamps are in seconds (NWB convention)
-- Check timezone handling
-- Print first/last timestamps and compare with expected session duration
-
-**Metadata schema validation fails:**
-- Print the metadata dict and compare with schema
-- Check for required fields that are None or empty
-- Check types (datetime vs string, list vs single value)
+Timestamps are in seconds from `session_start_time`. Compare the first and last timestamps
+of each stream with the expected session duration.
 
 ### Push Phase 7 Results
 
