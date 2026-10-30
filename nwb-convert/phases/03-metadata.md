@@ -41,6 +41,7 @@
 - What was the excitation wavelength? (e.g., 920 nm for GCaMP, 1040 nm for jRGECO)
 - What objective did you use? (e.g., "Nikon 16x/0.8w")
 - Single-plane or multi-plane imaging?
+- Is the field of view registered to an atlas (e.g., widefield to Allen CCF, or region masks)? If so, see `knowledge/ndx-anatomical-localization.md`.
 
 These map to NWB metadata:
 ```yaml
@@ -61,7 +62,7 @@ Ophys:
 - What brain region(s) were you recording from? (Use Allen Brain Atlas terminology for mice, e.g., "CA1", "VISp", "MOs")
 - What probe model? (e.g., Neuropixels 1.0, Neuropixels 2.0, Cambridge NeuroTech H2)
 - How many probes per session?
-- Do you have histology-confirmed electrode locations? (If so, these should override intended targets)
+- Do you have histology-confirmed electrode locations or atlas-registered probe tracks (e.g., SHARP-Track, brainreg, Pinpoint)? (If so, these should override intended targets; store atlas coordinates as in `knowledge/ndx-anatomical-localization.md`)
 
 These are usually auto-extracted from SpikeGLX/OpenEphys metadata, but confirm with the user.
 Note: every electrode MUST have a `location` value — use "unknown" if the region is truly unknown.
