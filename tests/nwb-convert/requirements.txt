@@ -4,6 +4,7 @@ roiextractors
 ndx-pose
 ndx-fiber-photometry
 nwbinspector
+ndx-hed>=0.3.0
 dandi
 pyyaml
 pytest

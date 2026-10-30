@@ -157,6 +157,7 @@ details, consult the knowledge base files:
 - `knowledge/conversion-patterns.md` — patterns from real conversion repos
 - `knowledge/nwb-best-practices.md` — NWB conventions and common mistakes (from NWB Inspector)
 - `knowledge/external-resources.md` — linking terms to ontologies and registries with HERD: lookup endpoints and a tested helper
+- `knowledge/value-meanings.md` — describing the values of categorical columns with a `MeaningsTable` and annotating them with HED: schema search, validation, and a tested helper
 
 ### Conversion Registry (`nwb-conversions` GitHub org)
 
@@ -245,4 +246,7 @@ generously — they make the conversation faster and reduce ambiguity.
     from memory. Look each one up in its registry and check that the returned record matches
     what the lab meant, using its metadata and not only its name (a ROR record's country, an
     ORCID record's affiliation). Leave a value unannotated rather than guess.
+13. NEVER write a HED tag from memory, and NEVER invent what a coded value means. Find tags by
+    searching the HED schema and validate every string. Take the meaning of a value from the
+    lab. Leave a value without HED, or a column without meanings, rather than guess.
 </instructions>

@@ -1,7 +1,7 @@
 # Tests for the nwb-convert Skill
 
-These tests cover the ontology annotation phase (`phases/06-ontology-annotation.md` and
-`knowledge/external-resources.md`). The code under test is the code in those markdown files.
+These tests cover the ontology annotation phase (`phases/06-ontology-annotation.md`,
+`knowledge/external-resources.md`, and `knowledge/value-meanings.md`). The code under test is the code in those markdown files.
 The fixtures extract the fenced code blocks verbatim, so a change to the documentation is a
 change to what is tested, and nothing needs to be kept in sync by hand.
 
@@ -22,6 +22,23 @@ source data are needed. The tests check:
 - the standalone HERD across several files
 - PyNWB validation, NWB Inspector, and `dandi validate` on an annotated file
 - the claims about NeuroConv's built-in support, where the installed NeuroConv has it
+
+`test_value_meanings.py` covers the second half of the phase (`knowledge/value-meanings.md`)
+the same way. It builds the package with both helpers and the hook that calls them, and runs
+a conversion through `toy_table_interfaces.py`, which writes a trials table with string,
+boolean, integer, numeric, and free-text columns and an events table that already has a
+`MeaningsTable`, as a NeuroConv events interface leaves it. The tests check:
+
+- the meanings and HED written for each column, the boolean values, and the recorded schema version
+- that an existing `MeaningsTable` keeps its rows and gains the new values and the HED
+- that meanings without HED are written without importing `ndx-hed`
+- tables and columns a session does not have, and an empty file
+- the listing, schema search, validation, and checking scripts, and the Phase 7 snippet
+- that every HED string in the phase's example validates without errors or warnings
+- the statements the knowledge file makes about the HED schema and about `ndx-hed`
+- PyNWB validation of an annotated file
+
+These are skipped when `ndx-hed` is not installed.
 
 `test_lookups.py` runs every `curl` command in the knowledge file against the live
 registries, checks the facts the text states about their results, and checks that every URL
@@ -48,4 +65,5 @@ Set `SKILL_REPO` to test a different checkout of the repository than the one the
 
 Whether an agent can follow the phase is not something these tests can show. That was
 checked by giving a fresh agent the two files and a simulated conversion repository, and
-reading what it wrote and where it found the instructions unclear.
+reading what it wrote and where it found the instructions unclear. That check has not been
+done yet for the value meanings and HED steps.

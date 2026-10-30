@@ -96,6 +96,24 @@ A row with `object_type` `VectorData` is a table column, such as the `location` 
 electrodes table. `knowledge/external-resources.md` ("Checking a Written File") has a script
 that names each object and lists the values that were not written.
 
+Phase 6 also wired value meanings into the converter. Confirm they were written by adding
+this inside the same `with` block:
+
+```python
+    # Check value meanings
+    from hdmf.common import MeaningsTable
+
+    for meanings_table in nwbfile.all_children():
+        if isinstance(meanings_table, MeaningsTable):
+            print(f"{meanings_table.parent.name}/{meanings_table.target.name}")
+            print(meanings_table.to_dataframe().to_string())
+```
+
+Each column in `value_meanings.yaml` that this session has should be printed with one row
+per value, and a `HED` column where the values were annotated. Then run the script in
+`knowledge/value-meanings.md` ("Checking a Written File"), which lists the values in each
+column that have no meaning and validates the HED strings as they were written.
+
 ### Step 4: Run NWB Inspector
 
 **You MUST run nwbinspector on every converted file.** Do not skip this step or leave it for the user.
