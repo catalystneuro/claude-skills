@@ -34,19 +34,38 @@
 - Single-plane or multi-plane imaging?
 - Is the field of view registered to an atlas (e.g., widefield to Allen CCF, or region masks)? If so, see `knowledge/ndx-anatomical-localization.md`.
 
-These map to NWB metadata:
+These map to NWB metadata in the dict format that NeuroConv's `get_metadata()` returns. Key `MicroscopySeries`
+by the imaging interface's `metadata_key`; `interface.get_metadata_template()` shows the full shape with the keys
+filled in. Entries in the old list format (`Ophys: Device: - name: ...`) are ignored without an error.
 ```yaml
+DeviceModels:
+  microscope_model:
+    name: Neurolabware two-photon microscope
+    manufacturer: Neurolabware  # or Bruker, Thorlabs, etc.
+    description: Resonant scanning two-photon microscope
+Devices:
+  microscope:
+    name: Microscope
+    description: Two-photon microscope
+    device_model_metadata_key: microscope_model
 Ophys:
-  Device:
-    - name: Microscope
-      description: Two-photon microscope
-      manufacturer: Scanbox  # or Bruker, Thorlabs, etc.
-  ImagingPlane:
-    - name: ImagingPlane
+  ImagingPlanes:
+    imaging_plane:
+      name: ImagingPlane
       description: Imaging plane in hippocampal CA1
       excitation_lambda: 920.0
       indicator: GCaMP6f
       location: CA1
+      device_metadata_key: microscope
+      optical_channel:
+        - name: Green
+          description: GCaMP6f emission
+          emission_lambda: 510.0
+  MicroscopySeries:
+    sbx_imaging:  # the imaging interface's metadata_key
+      name: TwoPhotonSeries
+      description: Two-photon calcium imaging data
+      imaging_plane_metadata_key: imaging_plane
 ```
 
 **For ecephys (extracellular electrophysiology), also ask:**
