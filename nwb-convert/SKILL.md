@@ -143,8 +143,8 @@ details, consult the knowledge base files:
 - `knowledge/neuroconv-interfaces.yaml` — all available interfaces and their schemas. Do not use
   an entry marked `deprecated`; it names the replacement. Maintainers refresh this file with
   `tools/update_neuroconv_interfaces.py`.
-- `knowledge/repo-structure.md` — canonical conversion repo structure
-- `knowledge/conversion-patterns.md` — patterns from real conversion repos
+- `knowledge/repo-structure.md` — templates for every file in the conversion repo
+- `knowledge/conversion-patterns.md` — choosing a converter pattern, reading MATLAB, text and pickle files
 - `knowledge/nwb-best-practices.md` — NWB conventions and common mistakes (from NWB Inspector)
 - `knowledge/external-resources.md` — linking terms to ontologies and registries with HERD: lookup endpoints and a tested helper
 - `knowledge/value-meanings.md` — describing the values of categorical columns with a `MeaningsTable` and annotating them with HED: schema search, validation, and a tested helper

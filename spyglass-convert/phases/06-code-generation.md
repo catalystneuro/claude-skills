@@ -19,11 +19,10 @@ workflow. All of the following apply equally to Spyglass conversions:
 
 - **Step 3b** — check the nwb-conversions registry for reusable custom interfaces
   before writing from scratch
-- **Step 4** — custom DataInterface guidelines (lazy loading, `get_metadata()`
-  responsibility, `conversion` parameter, `resolution=-1.0`, NWB type selection table,
-  behavioral vs stimulus data, time-series best practices, table best practices,
-  ecephys best practices). Read nwb-convert Phase 5 Step 4 in full before writing any
-  custom `BaseDataInterface` subclass.
+- **Step 4** — custom DataInterface guidelines (`get_metadata()` responsibility,
+  `conversion` parameter, NWB type selection table, behavioral vs stimulus data). Read
+  nwb-convert Phase 5 Step 4 and `../nwb-convert/knowledge/nwb-best-practices.md` in full
+  before writing any custom `BaseDataInterface` subclass.
 - **Step 6** — `convert_all_sessions.py` pattern with `ProcessPoolExecutor`
 - **Step 8** — `README.md` generation with install and usage instructions
 
@@ -37,8 +36,7 @@ Also read before writing code:
 - `../nwb-convert/knowledge/nwb-best-practices.md` — NWB conventions that apply to all data types
 - `../nwb-convert/knowledge/pynwb-behavior.md` — behavior container types
 - `../nwb-convert/knowledge/pynwb-advanced-io.md` — H5DataIO compression for large arrays
-- `../nwb-convert/knowledge/conversion-patterns.md` — session discovery patterns,
-  position data, trial tables, sync recipes from real repos
+- `../nwb-convert/knowledge/repo-structure.md` §5 — session discovery patterns
 
 ### Step 1: Scaffold the Repository
 
@@ -71,7 +69,7 @@ Also read before writing code:
 ### Step 2: Write pyproject.toml
 
 Use the canonical CatalystNeuro format (see `../nwb-convert/knowledge/repo-structure.md` §2
-for the full template with CI workflows and pre-commit config):
+for the full template, and §10 for CI workflows and pre-commit config):
 
 ```toml
 [project]

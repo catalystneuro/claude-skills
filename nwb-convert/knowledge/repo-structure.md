@@ -1,42 +1,34 @@
-# Canonical CatalystNeuro NWB Conversion Repo Structure
+# Conversion Repo Templates
 
-This document is a practical reference for generating a new `<lab>-lab-to-nwb` conversion repository following the CatalystNeuro pattern established by the [cookiecutter-my-lab-to-nwb-template](https://github.com/catalystneuro/cookiecutter-my-lab-to-nwb-template). All code examples are drawn from real production repos (cai-lab-to-nwb, giocomo-lab-to-nwb).
+The templates for every file Phase 5 generates in a `<lab>-lab-to-nwb` conversion repository. They follow the
+[cookiecutter-my-lab-to-nwb-template](https://github.com/catalystneuro/cookiecutter-my-lab-to-nwb-template).
+Phase 5 says when to write each file.
 
 ---
 
 ## 1. Directory Structure
 
-A conversion repo has this exact layout:
-
 ```
 <lab>-lab-to-nwb/
-├── .github/
-│   └── workflows/
-│       ├── auto-publish.yml      # PyPI publish on GitHub release
-│       └── test-install.yml      # Monthly CI: install + import test
-├── .gitignore
-├── .pre-commit-config.yaml       # black, ruff, codespell, trailing whitespace
+├── .github/workflows/            # Only if the user wants PyPI publishing (Section 10)
+│   ├── auto-publish.yml
+│   └── test-install.yml
+├── .gitignore                    # Created in Phase 1
+├── .pre-commit-config.yaml
 ├── LICENSE                       # MIT
 ├── README.md
-├── make_env.yml                  # Conda environment definition
-├── pyproject.toml                # Build config, deps, tooling
+├── pyproject.toml
 └── src/
     └── <lab>_lab_to_nwb/         # Python package (underscored slug)
-        ├── __init__.py           # Empty or minimal
+        ├── __init__.py           # Empty
         ├── <conversion_a>/       # One directory per conversion/experiment
-        │   ├── __init__.py       # Exports the NWBConverter and custom interfaces
+        │   ├── __init__.py       # Empty, or exports the converter and custom interfaces
         │   ├── <conversion_a>_nwbconverter.py
         │   ├── convert_session.py
         │   ├── convert_all_sessions.py
         │   ├── metadata.yaml
-        │   ├── <custom_interface_1>.py
-        │   ├── <custom_interface_2>.py
-        │   ├── interfaces/       # Optional: subdirectory if many interfaces
-        │   │   ├── __init__.py
-        │   │   ├── <interface_1>.py
-        │   │   └── <interface_2>.py
-        │   ├── utils/            # Optional: helper scripts
-        │   └── conversion_notes.md  # Free-form notes about the conversion
+        │   ├── <custom_interface>.py      # Or an interfaces/ subpackage when there are many
+        │   └── conversion_notes.md
         └── <conversion_b>/       # Additional conversions for the same lab
             └── ...
 ```
@@ -47,41 +39,14 @@ A conversion repo has this exact layout:
 |---------|-----------|---------|
 | Repo name | `<lab>-lab-to-nwb` | `cai-lab-to-nwb` |
 | Package slug | `<lab>_lab_to_nwb` (underscored) | `cai_lab_to_nwb` |
-| Conversion directory | `<first_author><year>` or descriptive name | `zaki_2024`, `wen22` |
+| Conversion directory | `<first_author>_<year>` or descriptive name | `zaki_2024` |
 | NWBConverter class | `<ConversionCamelCase>NWBConverter` | `Zaki2024NWBConverter` |
 | Interface class | `<ConversionCamelCase><Modality>Interface` | `Zaki2024ShockStimuliInterface` |
 | NWBConverter module | `<conversion_name>_nwbconverter.py` | `zaki_2024_nwbconverter.py` |
-| Metadata file | `metadata.yaml` | `metadata.yaml` |
-| Convert session script | `convert_session.py` | `convert_session.py` |
-| Convert all script | `convert_all_sessions.py` | `convert_all_sessions.py` |
-
-### The `__init__.py` files
-
-The conversion-level `__init__.py` exports the key classes so they can be imported cleanly:
-
-```python
-# src/cai_lab_to_nwb/zaki_2024/__init__.py
-# (can be empty, or export key classes)
-```
-
-If you have an `interfaces/` subdirectory, its `__init__.py` re-exports everything:
-
-```python
-# src/cai_lab_to_nwb/zaki_2024/interfaces/__init__.py
-from .eztrack_interface import EzTrackFreezingBehaviorInterface
-from .zaki_2024_edf_interface import Zaki2024EDFInterface, Zaki2024MultiEDFInterface
-from .minian_interface import MinianSegmentationInterface, MinianMotionCorrectionInterface
-from .zaki_2024_sleep_classification_interface import Zaki2024SleepClassificationInterface
-from .miniscope_imaging_interface import MiniscopeImagingInterface
-from .zaki_2024_shock_stimuli_interface import Zaki2024ShockStimuliInterface
-from .zaki_2024_cell_registration_interface import Zaki2024CellRegistrationInterface
-```
 
 ---
 
 ## 2. pyproject.toml
-
-The build system uses **hatchling** (the modern standard). Here is the canonical structure with all required fields:
 
 ```toml
 [project]
@@ -108,11 +73,11 @@ dependencies = [
 [project.urls]
 Repository = "https://github.com/catalystneuro/<lab>-lab-to-nwb"
 
-# Per-conversion pinned dependencies (install with: uv pip install -e ".[conversion_name]")
+# Per-conversion dependencies (install with: uv pip install -e ".[conversion_name]")
 [project.optional-dependencies]
 <conversion_name> = [
-  "neuroconv",   # Use latest during development; pin to exact version only after conversion is finalized
-  # Add conversion-specific extras here, e.g.:
+  "neuroconv[<extras>]",   # Use latest during development; pin to exact version only after conversion is finalized
+  # Add conversion-specific packages here, e.g.:
   # "mne",
   # "opencv-python-headless",
   # "ndx-miniscope==0.5.1",
@@ -153,49 +118,28 @@ check-hidden = true
 ignore-words-list = 'assertin'
 ```
 
-### Key points about dependencies
-
-- The top-level `dependencies` list should contain unpinned `neuroconv` and `nwbinspector` for broad compatibility.
-- Per-conversion optional dependencies should be **unpinned during active development** (use latest). Only pin exact versions after the conversion is finalized and validated, to ensure reproducibility.
-- Conversion-specific extras (e.g., `mne` for EDF files, `opencv-python-headless` for video, NWB extension packages like `ndx-miniscope`) go in the optional dependencies section.
-
-### Real-world example (cai-lab-to-nwb)
-
-The cai-lab-to-nwb repo pins all its core dependencies because it has a single primary conversion:
-
-```toml
-dependencies = [
-  "pynwb==3.0.0",
-  "neuroconv==0.7.4",
-  "nwbinspector==0.6.3",
-  "roiextractors==0.5.13",
-  "ipykernel",
-  "openpyxl",
-  "mne",
-  "opencv-python-headless",
-  "ndx-miniscope==0.5.1",
-]
-```
+- Keep `neuroconv` and `nwbinspector` unpinned in the top-level `dependencies`.
+- Leave the per-conversion dependencies unpinned during development. Pin exact versions only after the conversion
+  is finalized and validated.
+- NeuroConv extras depend on the interfaces used: `neuroconv[spikeglx]`, `neuroconv[openephys]`, `neuroconv[phy]`,
+  `neuroconv[suite2p]`, `neuroconv[deeplabcut]`, and so on. Check NeuroConv's `pyproject.toml` for the full list.
+- Packages for custom interfaces (`mne` for EDF, `opencv-python-headless` for video, NWB extensions such as
+  `ndx-miniscope`) go in the same optional-dependency list.
+- Check the build with `uv build` and list the wheel contents to confirm `metadata.yaml` is included.
 
 ---
 
 ## 3. NWBConverter Class
 
-The `NWBConverter` is the central orchestrator. It declares which `DataInterface` classes handle each data modality and wires them together.
-
-### The pattern
-
 ```python
 """Primary NWBConverter class for this dataset."""
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
-    SpikeGLXRecordingInterface,
     PhySortingInterface,
+    SpikeGLXRecordingInterface,
 )
 
-from <lab>_lab_to_nwb.<conversion_name>.interfaces import (
-    <ConversionName>BehaviorInterface,
-)
+from <lab>_lab_to_nwb.<conversion_name>.<custom_module> import <ConversionName>BehaviorInterface
 
 
 class <ConversionName>NWBConverter(NWBConverter):
@@ -206,98 +150,26 @@ class <ConversionName>NWBConverter(NWBConverter):
         Sorting=PhySortingInterface,
         Behavior=<ConversionName>BehaviorInterface,
     )
+
+    def temporally_align_data_interfaces(self, metadata: dict | None = None, conversion_options: dict | None = None):
+        """Implement the sync plan from Phase 4 here (Section 8). Omit this method if no alignment is needed."""
 ```
 
-### How to choose interfaces
-
-The `data_interface_classes` dict maps **arbitrary string keys** to interface classes. The keys become the keys you use in `source_data` and `conversion_options` dicts. Choose keys that describe the data modality clearly.
-
-Look up built-in interfaces, their formats, and their required `source_data` arguments in `knowledge/neuroconv-interfaces.yaml`.
-
-When no built-in interface exists for a data type, write a custom `BaseDataInterface` subclass (see Section 6).
-
-### Real-world example (cai-lab-to-nwb, zaki_2024)
-
-This converter has 10 data interfaces, mixing built-in and custom:
-
-```python
-from neuroconv import NWBConverter
-from neuroconv.datainterfaces import ExternalVideoInterface
-from neuroconv.utils.dict import DeepDict
-from datetime import timedelta
-
-from cai_lab_to_nwb.zaki_2024.interfaces import (
-    MinianSegmentationInterface,
-    Zaki2024EDFInterface,
-    Zaki2024MultiEDFInterface,
-    EzTrackFreezingBehaviorInterface,
-    Zaki2024SleepClassificationInterface,
-    MiniscopeImagingInterface,
-    MinianMotionCorrectionInterface,
-    Zaki2024ShockStimuliInterface,
-    Zaki2024CellRegistrationInterface,
-)
-
-
-class Zaki2024NWBConverter(NWBConverter):
-    """Primary conversion class Cai Lab dataset."""
-
-    data_interface_classes = dict(
-        MiniscopeImaging=MiniscopeImagingInterface,
-        MinianSegmentation=MinianSegmentationInterface,
-        MinianMotionCorrection=MinianMotionCorrectionInterface,
-        SleepClassification=Zaki2024SleepClassificationInterface,
-        EDFSignals=Zaki2024EDFInterface,
-        MultiEDFSignals=Zaki2024MultiEDFInterface,
-        FreezingBehavior=EzTrackFreezingBehaviorInterface,
-        Video=ExternalVideoInterface,
-        ShockStimuli=Zaki2024ShockStimuliInterface,
-        CellRegistration=Zaki2024CellRegistrationInterface,
-    )
-```
-
-### Overriding `get_metadata()`
-
-Override `get_metadata()` when you need to compute metadata that depends on the source data itself:
-
-```python
-def get_metadata(self) -> DeepDict:
-    metadata = super().get_metadata()
-
-    # Example: adjust session_start_time based on imaging timestamps
-    if "MiniscopeImaging" in self.data_interface_objects:
-        imaging_interface = self.data_interface_objects["MiniscopeImaging"]
-        imaging_timestamps = imaging_interface.get_original_timestamps()
-        if imaging_timestamps[0] < 0.0:
-            time_shift = timedelta(seconds=abs(imaging_timestamps[0]))
-            session_start_time = imaging_interface.get_metadata()["NWBFile"]["session_start_time"]
-            metadata["NWBFile"].update(session_start_time=session_start_time - time_shift)
-
-    return metadata
-```
-
-### Not all interfaces must be present in every session
-
-The converter class declares the **superset** of all possible interfaces. In `convert_session.py`, you only add entries to `source_data` for interfaces that are relevant to that particular session. The converter will only instantiate interfaces that have entries in `source_data`.
+- The keys of `data_interface_classes` are arbitrary names. They become the keys of `source_data` and
+  `conversion_options`, so name the data stream (`Recording`, `LFP`, `Sorting`, `Behavior`).
+- Look up built-in interfaces and their required `source_data` arguments in `knowledge/neuroconv-interfaces.yaml`.
+- The class declares the superset of interfaces. The converter instantiates only those with an entry in
+  `source_data`, so `convert_session.py` adds an entry only for the data a session has.
+- Override `get_metadata()` (call `super().get_metadata()` first) only for metadata computed from several
+  interfaces' source data.
 
 ---
 
 ## 4. convert_session.py
 
-This is the script that converts a single session. It follows a strict pattern:
-
-1. Build `source_data` dict (file paths for each interface)
-2. Build `conversion_options` dict (per-interface options like `stub_test`)
-3. Instantiate the converter
-4. Get auto-extracted metadata, layer on YAML metadata, layer on session-specific metadata
-5. Call `converter.run_conversion()`
-
-### The canonical pattern
-
 ```python
 """Primary script to run to convert an entire session of data using the NWBConverter."""
 from pathlib import Path
-from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from neuroconv.utils import load_dict_from_file, dict_deep_update
@@ -316,180 +188,86 @@ def session_to_nwb(
         output_dir_path = output_dir_path / "nwb_stub"
     output_dir_path.mkdir(parents=True, exist_ok=True)
 
-    session_id = "subject_session_identifier"
+    # Determine session_id and subject_id from path/filenames
+    session_id = "..."
+    subject_id = "..."
     nwbfile_path = output_dir_path / f"{session_id}.nwb"
 
-    # ---- Step 1: Build source_data and conversion_options ----
+    # Build source_data
     source_data = dict()
     conversion_options = dict()
 
-    # Add Recording
-    source_data.update(dict(Recording=dict(
-        folder_path=str(data_dir_path / "<session>_g0" / "<session>_g0_imec0"),
-        stream_id="imec0.ap",
-    )))
-    conversion_options.update(dict(Recording=dict(stub_test=stub_test)))
+    # Add each interface with its file paths
+    # Pass every required source_data argument the interface lists in neuroconv-interfaces.yaml
+    # (SpikeGLXRecordingInterface shown here)
+    source_data["Recording"] = dict(folder_path=str(data_dir_path / "..."), stream_id="imec0.ap")
+    conversion_options["Recording"] = dict(stub_test=stub_test)
 
-    # Add Sorting
-    source_data.update(dict(Sorting=dict(
-        folder_path=str(data_dir_path / "sorting"),
-    )))
-    conversion_options.update(dict(Sorting=dict()))
+    # Conditionally add interfaces if files exist
+    behavior_path = data_dir_path / "behavior.txt"
+    if behavior_path.is_file():
+        source_data["Behavior"] = dict(file_path=str(behavior_path))
+        conversion_options["Behavior"] = dict()
 
-    # Add Behavior (custom interface)
-    source_data.update(dict(Behavior=dict(
-        file_path=str(data_dir_path / "behavior.csv"),
-    )))
-    conversion_options.update(dict(Behavior=dict()))
-
-    # ---- Step 2: Instantiate converter ----
+    # Create converter
     converter = <ConversionName>NWBConverter(source_data=source_data)
 
-    # ---- Step 3: Build metadata (layered) ----
-    # Layer 1: Auto-extracted from source files
+    # Get and merge metadata
     metadata = converter.get_metadata()
 
-    # Layer 2: Set session_start_time with timezone
-    session_start_time = datetime(year=2020, month=1, day=1, tzinfo=ZoneInfo("US/Eastern"))
-    metadata["NWBFile"]["session_start_time"] = session_start_time
-
-    # Layer 3: Merge in the hand-edited YAML metadata
-    editable_metadata_path = Path(__file__).parent / "metadata.yaml"
-    editable_metadata = load_dict_from_file(editable_metadata_path)
+    metadata_path = Path(__file__).parent / "metadata.yaml"
+    editable_metadata = load_dict_from_file(metadata_path)
     metadata = dict_deep_update(metadata, editable_metadata)
 
-    # Layer 4: Session-specific overrides
-    metadata["Subject"]["subject_id"] = "mouse001"
+    # Set session-specific metadata
+    tz = ZoneInfo("<timezone>")
+    if metadata["NWBFile"]["session_start_time"]:
+        metadata["NWBFile"]["session_start_time"] = (
+            metadata["NWBFile"]["session_start_time"].replace(tzinfo=tz)
+        )
     metadata["NWBFile"]["session_id"] = session_id
 
-    # ---- Step 4: Run conversion ----
+    # Subject metadata — subject_id is required for DANDI
+    metadata["Subject"]["subject_id"] = subject_id
+    # Load per-subject metadata from file if available (Section 7)
+    # See knowledge/nwb-best-practices.md for required formats:
+    #   species: Latin binomial (e.g., "Mus musculus")
+    #   sex: one of "M", "F", "U", "O"
+    #   age: ISO 8601 duration (e.g., "P90D")
+    #   weight: "numeric unit" (e.g., "0.025 kg")
+
+    # Run conversion
     converter.run_conversion(
-        metadata=metadata,
         nwbfile_path=nwbfile_path,
+        metadata=metadata,
         conversion_options=conversion_options,
         overwrite=True,
     )
 
 
 if __name__ == "__main__":
-    data_dir_path = Path("/path/to/raw/data/")
-    output_dir_path = Path("~/conversion_nwb").expanduser()
-    stub_test = False
-
+    # Example usage
+    data_dir_path = Path("/path/to/data")
+    output_dir_path = Path("/path/to/output")
     session_to_nwb(
         data_dir_path=data_dir_path,
         output_dir_path=output_dir_path,
-        stub_test=stub_test,
+        stub_test=True,  # Set to False for full conversion
     )
 ```
 
-### Metadata layering order
-
-This is critical. Later layers override earlier ones:
-
-1. **Auto-extracted** (`converter.get_metadata()`): Reads metadata from the source files themselves (e.g., sampling rate from SpikeGLX .meta files, session_start_time from file timestamps).
-2. **session_start_time with timezone**: Must always be set explicitly with a timezone. Use `ZoneInfo` (Python 3.9+) or `pytz`.
-3. **YAML file** (`dict_deep_update` with loaded YAML): Lab-level metadata that applies to all sessions of this conversion (institution, lab, experimenter, species, publications, etc.).
-4. **Session-specific overrides**: `subject_id`, `session_id`, `session_description`, etc. that vary per session.
-
-### Real-world example (cai-lab-to-nwb, zaki_2024)
-
-The real convert_session.py shows the pattern with conditional interface inclusion (not all sessions have all data types):
-
-```python
-def session_to_nwb(
-    output_dir_path: Union[str, Path],
-    subject_id: str,
-    session_id: str,
-    date_str: str,
-    time_str: str,
-    session_description: str,
-    stub_test: bool = False,
-    overwrite: bool = False,
-    verbose: bool = False,
-    imaging_folder_path: Union[str, Path] = None,
-    minian_folder_path: Union[str, Path] = None,
-    video_file_path: Union[str, Path] = None,
-    freezing_output_file_path: Union[str, Path] = None,
-    edf_file_path: Union[str, Path] = None,
-    sleep_classification_file_path: Union[str, Path] = None,
-    shock_stimulus: dict = None,
-):
-    # ...
-    source_data = dict()
-    conversion_options = dict()
-
-    # Conditionally add interfaces based on what data is available
-    if imaging_folder_path:
-        imaging_folder_path = Path(imaging_folder_path)
-        source_data.update(dict(MiniscopeImaging=dict(folder_path=imaging_folder_path)))
-        conversion_options.update(dict(MiniscopeImaging=dict(stub_test=stub_test)))
-
-    if minian_folder_path:
-        minian_folder_path = Path(minian_folder_path)
-        source_data.update(dict(MinianSegmentation=dict(folder_path=minian_folder_path)))
-        conversion_options.update(dict(MinianSegmentation=dict(stub_test=stub_test)))
-
-    if video_file_path:
-        source_data.update(dict(Video=dict(file_paths=[video_file_path])))
-        conversion_options.update(dict(Video=dict()))
-
-    if shock_stimulus is not None:
-        source_data.update(ShockStimuli=dict())
-        conversion_options.update(ShockStimuli=shock_stimulus)
-
-    converter = Zaki2024NWBConverter(source_data=source_data, verbose=verbose)
-    metadata = converter.get_metadata()
-
-    # Timezone localization
-    eastern = pytz.timezone("US/Eastern")
-    metadata["NWBFile"]["session_start_time"] = eastern.localize(
-        metadata["NWBFile"]["session_start_time"]
-    )
-
-    # YAML metadata layer
-    editable_metadata_path = Path(__file__).parent / "zaki_2024_metadata.yaml"
-    editable_metadata = load_dict_from_file(editable_metadata_path)
-    metadata = dict_deep_update(metadata, editable_metadata)
-
-    # Session-specific metadata
-    metadata["Subject"]["subject_id"] = subject_id
-    metadata["NWBFile"]["session_description"] = session_description
-    metadata["NWBFile"]["session_id"] = session_id
-
-    converter.run_conversion(
-        metadata=metadata,
-        nwbfile_path=nwbfile_path,
-        conversion_options=conversion_options,
-        overwrite=overwrite,
-    )
-```
-
-### The `stub_test` pattern
-
-The `stub_test` parameter is a convention that:
-- Redirects output to a `nwb_stub/` subdirectory
-- Gets passed to each interface's `conversion_options` so they only write a small subset of data (e.g., first few seconds of recording)
-- Enables fast iteration during development without writing full datasets
-
-```python
-if stub_test:
-    output_dir_path = output_dir_path / "nwb_stub"
-# ...
-conversion_options.update(dict(Recording=dict(stub_test=stub_test)))
-```
-
-### NWB file naming
-
-Use descriptive, BIDS-like naming: `sub-<subject_id>_ses-<session_id>.nwb` or simply `<session_id>.nwb`.
+- Metadata layers, later ones overriding earlier ones: values the interfaces extract from the source files
+  (`converter.get_metadata()`), then `metadata.yaml`, then per-session values (`session_id`, `subject_id`,
+  `session_description`, per-subject fields).
+- `session_start_time` must carry a timezone. If no interface extracts it, set it from the session's records,
+  e.g. `datetime(2020, 1, 1, 13, 0, tzinfo=tz)`.
+- `stub_test=True` writes to `nwb_stub/` and passes `stub_test` to each interface that supports it, so only a
+  few seconds of data are written. Phase 7 runs the stub first.
+- Name files `<session_id>.nwb` or `sub-<subject_id>_ses-<session_id>.nwb`. `dandi organize` renames them on upload.
 
 ---
 
 ## 5. convert_all_sessions.py
-
-This script handles batch conversion of all sessions in a dataset. It follows a template pattern with three functions:
-
-### The canonical pattern
 
 ```python
 """Primary script to run to convert all sessions in a dataset using session_to_nwb."""
@@ -503,11 +281,7 @@ from <lab>_lab_to_nwb.<conversion_name>.convert_session import session_to_nwb
 
 def get_session_to_nwb_kwargs_per_session(data_dir_path: Path) -> list[dict]:
     """Return one dict of session_to_nwb arguments per session, e.g. dict(data_dir_path=session_dir_path)."""
-    # IMPLEMENT THIS. Common strategies:
-    #   1. Iterate over session directories: sorted(data_dir_path.iterdir())
-    #   2. Read from a spreadsheet/CSV with session metadata
-    #   3. Load from a pre-computed YAML parameters file
-    raise NotImplementedError
+    raise NotImplementedError("Implement session discovery")
 
 
 def safe_session_to_nwb(session_to_nwb_kwargs: dict, exception_file_path: Path):
@@ -554,183 +328,80 @@ if __name__ == "__main__":
     )
 ```
 
-### Key design decisions
-
-- **`ProcessPoolExecutor`**: Enables parallel conversion of sessions. Default `max_workers=1` for sequential processing.
-- **`safe_session_to_nwb`**: Wraps `session_to_nwb` in a try/except that writes errors to a file instead of crashing the batch. This is critical for large datasets.
-- **`get_session_to_nwb_kwargs_per_session`**: This is the function that must be customized per conversion. It returns a list of dicts, where each dict contains exactly the per-session arguments of `session_to_nwb`. `dataset_to_nwb` adds `output_dir_path` and `stub_test`; any other key raises a TypeError for every session.
-
-### Real-world example of `get_session_to_nwb_kwargs_per_session` (cai-lab-to-nwb)
+`get_session_to_nwb_kwargs_per_session` is the part to write for each conversion. Each dict it returns holds
+exactly the per-session arguments of `session_to_nwb`; `dataset_to_nwb` adds `output_dir_path` and `stub_test`,
+and any other key raises a `TypeError` for every session. Common ways to find the sessions:
 
 ```python
-def get_session_to_nwb_kwargs_per_session(*, data_dir_path):
-    import pandas as pd
-    subjects_df = pd.read_excel(data_dir_path / "Ca_EEG_Design.xlsx")
-    subjects = subjects_df["Mouse"]
-    session_to_nwb_kwargs_per_session = []
+# One directory per session
+session_dir_paths = [path for path in sorted(data_dir_path.iterdir()) if path.is_dir() and not path.name.startswith(".")]
 
-    for subject_id in subjects:
-        yaml_file_path = Path(__file__).parent / "utils/conversion_parameters.yaml"
-        conversion_parameter_dict = load_dict_from_file(yaml_file_path)
-        if subject_id in conversion_parameter_dict:
-            for session_id in conversion_parameter_dict[subject_id].keys():
-                session_to_nwb_kwargs_per_session.append(
-                    conversion_parameter_dict[subject_id][session_id]
-                )
+# One file per session, matched by a pattern in its name
+session_dir_paths = [file_path.parent for file_path in sorted(data_dir_path.glob("*/cell_info_session*.mat"))]
 
-    return session_to_nwb_kwargs_per_session
+# A table the lab keeps, with one row per session (import pandas as pd)
+session_table = pd.read_csv(data_dir_path / "sessions.csv")
+session_dir_paths = [data_dir_path / folder_name for folder_name in session_table["session_folder"]]
+
+return [dict(data_dir_path=session_dir_path) for session_dir_path in session_dir_paths]
 ```
 
-### Real-world example of iterating over directories (giocomo-lab-to-nwb wen22)
-
-The wen22 conversion uses a simpler pattern -- iterating directly over session directories:
-
-```python
-session_path_list = [path for path in data_path.iterdir() if path.name != "VR"]
-for session_path in session_path_list:
-    session_id = session_path.name
-    # ... build source_data from session_path ...
-    converter = Wen21NWBConverter(source_data=source_data)
-    # ... run conversion ...
-```
+`safe_session_to_nwb` writes each failure to a file so one bad session does not stop the batch.
 
 ---
 
 ## 6. Custom DataInterface
 
-When no built-in NeuroConv interface exists for a data type, write a custom one by subclassing `BaseDataInterface`. This is the most common customization point.
-
-### The pattern
+Write one only after the reuse order in Phase 5 Step 3a rules out a built-in interface.
 
 ```python
 """Primary class for converting experiment-specific <modality>."""
-from pynwb.file import NWBFile
-
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.utils import DeepDict
+from pydantic import FilePath
+from pynwb.file import NWBFile
 
 
 class <ConversionName><Modality>Interface(BaseDataInterface):
-    """<Modality> interface for <conversion_name> conversion."""
+    """Interface for reading <description>."""
 
-    keywords = ["behavior"]  # Used for discoverability
+    keywords = ["<modality>"]
 
-    def __init__(self, file_path: str, verbose: bool = False):
-        # Load data LAZILY -- do not read entire files here.
-        # Store paths and parameters as instance attributes.
-        # Call super().__init__() to register source_data.
-        self.file_path = file_path
-        self.verbose = verbose
+    def __init__(self, file_path: FilePath):
+        """
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the <format> file.
+        """
         super().__init__(file_path=file_path)
 
     def get_metadata(self) -> DeepDict:
-        # Extract metadata from source files that can be auto-detected.
-        # Return a DeepDict (nested dict) matching the NWB metadata schema.
         metadata = super().get_metadata()
-        # Example: metadata["NWBFile"]["session_start_time"] = <extracted_datetime>
+        # Add metadata read from the source file itself, e.g. the session start time
         return metadata
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict, **conversion_options):
-        # The core method. Read data from source files and add to the NWBFile.
-        # conversion_options come from the conversion_options dict passed to run_conversion.
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict, stub_test: bool = False):
+        # Read data from self.source_data["file_path"], build PyNWB objects, and add them to nwbfile
         raise NotImplementedError()
 ```
 
-### Critical details about `__init__`
-
-- The `__init__` method's parameters become the keys in the `source_data` dict.
-- Call `super().__init__()` and pass all the init parameters as keyword arguments. This stores them in `self.source_data` for later reference.
-- Use type hints from `pydantic` for validation: `FilePath`, `DirectoryPath`.
-
-```python
-from pydantic import FilePath
-
-class MyInterface(BaseDataInterface):
-    def __init__(self, file_path: FilePath, sampling_frequency: float, verbose: bool = False):
-        self.file_path = file_path
-        self.verbose = verbose
-        self.sampling_frequency = sampling_frequency
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency)
-```
-
-Then in `source_data`:
-```python
-source_data["MyModality"] = dict(file_path="/path/to/file.csv", sampling_frequency=30000.0)
-```
-
-### Critical details about `add_to_nwbfile`
-
-- The method signature is `add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict, **kwargs)`.
-- Extra keyword arguments in the method signature correspond to keys in `conversion_options`.
-- You can include `stub_test: bool = False` to support the stub test pattern.
-- Use processing modules for derived data (see `get_module` in Section 9).
-
-### Real-world example: Simple interface (Zaki2024ShockStimuliInterface)
-
-This interface takes no source files -- the data is passed entirely through `conversion_options`:
-
-```python
-from pynwb.file import NWBFile
-from pynwb.epoch import TimeIntervals
-from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.utils import DeepDict
-from typing import Optional
-
-
-class Zaki2024ShockStimuliInterface(BaseDataInterface):
-    """Adds annotated events of shock times."""
-
-    keywords = ["behavior", "sleep stages"]
-
-    def __init__(self, verbose: bool = False):
-        self.verbose = verbose
-        super().__init__()
-
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
-        return metadata
-
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        shock_amplitude: float,
-        shock_times: list,
-        shock_duration: float,
-        metadata: Optional[dict] = None,
-    ):
-        description = (
-            "During aversive encoding, after a baseline period of 2 min, "
-            "mice received three 2 s foot shocks..."
-        )
-        shock_stimuli = TimeIntervals(name="ShockStimuli", description=description)
-        shock_stimuli.add_column(name="shock_amplitude", description="Shock amplitude in mA")
-        for start_time in shock_times:
-            shock_stimuli.add_interval(
-                start_time=start_time,
-                stop_time=start_time + shock_duration,
-                shock_amplitude=shock_amplitude,
-            )
-        nwbfile.add_stimulus(shock_stimuli)
-```
-
-The corresponding `conversion_options` in the convert_session.py:
-```python
-conversion_options.update(
-    ShockStimuli=dict(
-        shock_times=[120.0, 180.0, 240.0],
-        shock_amplitude=1.5,
-        shock_duration=2.0,
-    ),
-)
-```
+- The `__init__` parameters are the keys of this interface's `source_data` entry. Pass all of them to
+  `super().__init__()`, which stores them in `self.source_data`. Annotate paths with `pydantic`'s `FilePath` or
+  `DirectoryPath` so they are validated.
+- Keep `__init__` light: store paths and read data in `add_to_nwbfile`.
+- Extra keyword arguments of `add_to_nwbfile` are the keys of this interface's `conversion_options` entry.
+  Accept `stub_test` to support stub runs.
+- An interface whose timestamps must be aligned subclasses `BaseTemporalAlignmentInterface` instead (Section 8).
+- An interface can take no source files and receive all its data through `conversion_options`, e.g. shock times
+  and amplitudes the lab reports in the paper.
 
 ---
 
 ## 7. metadata.yaml
 
-The metadata YAML file contains hand-edited metadata that applies to all sessions of a conversion. It is loaded in `convert_session.py` and merged on top of auto-extracted metadata.
-
-### Structure and required fields
+Hand-edited metadata that applies to all sessions of a conversion, collected in Phase 3. `convert_session.py`
+merges it on top of the metadata the interfaces extract.
 
 ```yaml
 NWBFile:
@@ -764,68 +435,59 @@ Subject:
   date_of_birth: 2014-06-22 00:00:00-04:00  # Optional, with timezone
 ```
 
-### How metadata merging works
+`dict_deep_update` merges recursively: nested dicts merge, scalars are overwritten, and lists are appended with
+duplicates removed (lists of dicts merge by `name`). To replace a list, assign it after the merge.
 
-The `dict_deep_update` function performs a recursive merge. Nested dicts merge recursively, scalars are overwritten, and lists are appended with duplicates removed (lists of dicts merge by `name`). To replace a list, assign it after the merge.
+### Ophys metadata
 
-```python
-from neuroconv.utils import load_dict_from_file, dict_deep_update
-
-# Auto-extracted metadata (from file headers, etc.)
-metadata = converter.get_metadata()
-# Example: metadata["NWBFile"]["session_start_time"] is already set from file timestamps
-
-# YAML metadata overlays on top
-editable_metadata = load_dict_from_file(Path(__file__).parent / "metadata.yaml")
-metadata = dict_deep_update(metadata, editable_metadata)
-# Now metadata["NWBFile"]["lab"], ["institution"], etc. are set from the YAML
-# But session_start_time from auto-extraction is preserved (YAML doesn't override it)
-
-# Session-specific overrides
-metadata["Subject"]["subject_id"] = "mouse001"  # Per-session value
-```
-
-### Extended metadata for specific modalities
-
-For optical physiology, the metadata YAML can also define devices, imaging planes, optical channels, etc., in the
-dict format that `get_metadata()` returns. Key `MicroscopySeries` by the imaging interface's `metadata_key`
-(`interface.get_metadata_template()` shows the full shape with the keys filled in). Entries in the old list
-format (`Ophys: Device: - name: ...`) are ignored without an error.
+Devices, imaging planes, and series go in the dict format that `get_metadata()` returns. `MicroscopySeries`,
+`PlaneSegmentations` and the other per-interface entries are keyed by each interface's `metadata_key`. Print
+`converter.get_metadata()` and each ophys interface's `get_metadata_template()` and write the YAML in that shape.
+Entries in the old list format (`Ophys: Device: - name: ...`) are ignored without an error.
 
 ```yaml
+DeviceModels:
+  microscope_model:
+    name: Miniscope V4
+    manufacturer: Open Ephys
+    description: Head-mounted one-photon microscope.
 Devices:
   microscope:
     name: Microscope
-    description: One-photon widefield microscope.
+    description: Miniscope implanted over dorsal CA1.
+    device_model_metadata_key: microscope_model
 Ophys:
   ImagingPlanes:
     imaging_plane:
       name: ImagingPlane
-      description: Imaging plane for one-photon imaging data.
-      excitation_lambda: 496.0
+      description: Imaging plane in dorsal CA1.
+      excitation_lambda: 470.0
+      indicator: GCaMP6f
       location: CA1
       device_metadata_key: microscope
       optical_channel:
         - name: GreenChannel
           description: Green channel of the microscope.
           emission_lambda: 513.0
-      indicator: GCaMP6f
   MicroscopySeries:
     imaging:  # the imaging interface's metadata_key
       name: OnePhotonSeries
-      description: One-photon imaging data.
+      description: One-photon calcium imaging data.
       imaging_plane_metadata_key: imaging_plane
       unit: n.a.
+  PlaneSegmentations:
+    segmentation:  # the segmentation interface's metadata_key
+      imaging_plane_metadata_key: imaging_plane
 ```
 
 The series type comes from the imaging interface's `photon_series_type` conversion option, which defaults to `TwoPhotonSeries` in most imaging interfaces (Miniscope defaults to `OnePhotonSeries`) whatever the YAML `name` says. For one-photon data, set it in the converter's `conversion_options`, keyed by the interface name: `conversion_options.update(dict(Imaging=dict(photon_series_type="OnePhotonSeries")))`.
 
 ### Per-subject metadata
 
-For datasets with multiple subjects, you can use a separate YAML file for subject-specific metadata:
+For datasets with several subjects, keep subject fields in a separate YAML file keyed by subject:
 
 ```yaml
-# subject_metadata.yml (from giocomo wen22)
+# subject_metadata.yaml
 N2:
   subject_id: N2
   age: P90D
@@ -836,10 +498,10 @@ N2:
   sex: U
 ```
 
-Then load and merge per subject:
+and merge the subject's entry in `convert_session.py`:
+
 ```python
-subject_metadata_from_yaml = load_dict_from_file(Path("./subject_metadata.yml"))
-subject_metadata = subject_metadata_from_yaml[subject_id]
+subject_metadata = load_dict_from_file(Path(__file__).parent / "subject_metadata.yaml")[subject_id]
 metadata["Subject"] = dict_deep_update(metadata["Subject"], subject_metadata)
 ```
 
@@ -847,84 +509,20 @@ metadata["Subject"] = dict_deep_update(metadata["Subject"], subject_metadata)
 
 ## 8. Temporal Alignment
 
-When multiple data streams have different clocks or start times, you must align them. This is done by overriding `temporally_align_data_interfaces()` in the NWBConverter.
-
-### The pattern
+When data streams have different clocks or start times, override `temporally_align_data_interfaces()` in the
+NWBConverter. Phase 4 covers the sync patterns and NeuroConv's TTL helpers.
 
 ```python
-class MyNWBConverter(NWBConverter):
+class <ConversionName>NWBConverter(NWBConverter):
     data_interface_classes = dict(...)
 
-    def temporally_align_data_interfaces(self, metadata=None, conversion_options=None):
-        """Align all data streams to a common time reference."""
-
-        # Access interfaces by their keys
-        if "Recording" in self.data_interface_objects:
-            recording_interface = self.data_interface_objects["Recording"]
-            # Get original timestamps
-            original_timestamps = recording_interface.get_original_timestamps()
-            # Apply a shift
-            recording_interface.set_aligned_timestamps(original_timestamps + time_shift)
-            # Or set just the starting time
-            recording_interface.set_aligned_starting_time(new_start_time)
+    def temporally_align_data_interfaces(self, metadata: dict | None = None, conversion_options: dict | None = None):
+        if "Behavior" in self.data_interface_objects:
+            behavior_interface = self.data_interface_objects["Behavior"]
+            time_shift = ...  # offset of the behavior clock from the reference clock, from the Phase 4 sync plan
+            original_timestamps = behavior_interface.get_original_timestamps()
+            behavior_interface.set_aligned_timestamps(original_timestamps + time_shift)
 ```
-
-### Real-world example (cai-lab-to-nwb, zaki_2024)
-
-This is the most comprehensive temporal alignment example available. It handles the case where imaging timestamps start before zero (negative timestamps):
-
-```python
-def temporally_align_data_interfaces(self, metadata=None, conversion_options=None):
-    if "MiniscopeImaging" in self.data_interface_objects:
-        imaging_interface = self.data_interface_objects["MiniscopeImaging"]
-        imaging_timestamps = imaging_interface.get_original_timestamps()
-
-        if imaging_timestamps[0] < 0.0:
-            time_shift = abs(imaging_timestamps[0])
-
-            # Shift imaging timestamps
-            imaging_interface.set_aligned_timestamps(imaging_timestamps + time_shift)
-
-            # Shift segmentation timestamps
-            if "MinianSegmentation" in self.data_interface_objects:
-                seg_interface = self.data_interface_objects["MinianSegmentation"]
-                seg_timestamps = seg_interface.get_original_timestamps()
-                seg_interface.set_aligned_timestamps(seg_timestamps + time_shift)
-
-            # Shift sleep classification intervals
-            if "SleepClassification" in self.data_interface_objects:
-                sleep_interface = self.data_interface_objects["SleepClassification"]
-                start_times, stop_times, states = sleep_interface.get_sleep_states_times()
-                start_times += time_shift
-                stop_times += time_shift
-                sleep_interface.set_aligned_interval_times(
-                    start_times=start_times, stop_times=stop_times
-                )
-
-            # Shift EDF starting time
-            if "EDFSignals" in self.data_interface_objects:
-                edf_interface = self.data_interface_objects["EDFSignals"]
-                edf_interface.set_aligned_starting_time(time_shift)
-
-            # Shift freezing behavior
-            if "FreezingBehavior" in self.data_interface_objects:
-                fb_interface = self.data_interface_objects["FreezingBehavior"]
-                start_times, stop_times = fb_interface.get_interval_times()
-                fb_interface.set_aligned_interval_times(
-                    start_times=start_times + time_shift,
-                    stop_times=stop_times + time_shift,
-                )
-
-            # Shift video timestamps
-            if "Video" in self.data_interface_objects:
-                video_interface = self.data_interface_objects["Video"]
-                video_timestamps = video_interface.get_original_timestamps()
-                video_interface.set_aligned_timestamps(video_timestamps + time_shift)
-```
-
-For TTL-based and interpolation examples, see the synchronization patterns in `conversion-patterns.md`.
-
-### Alignment API summary
 
 These methods exist on `BaseTemporalAlignmentInterface`. A custom interface that must be aligned subclasses it and implements `get_original_timestamps`, `get_timestamps` and `set_aligned_timestamps`.
 
@@ -939,165 +537,55 @@ These methods exist on `BaseTemporalAlignmentInterface`. A custom interface that
 
 ---
 
-## 9. Common Utilities
+## 9. README.md
 
-### `load_dict_from_file`
+````markdown
+# <lab>-lab-to-nwb
 
-Loads YAML or JSON files into a Python dict:
+NWB conversion scripts for the [<Lab> Lab](lab_url) data,
+using [NeuroConv](https://github.com/catalystneuro/neuroconv).
 
-```python
-from neuroconv.utils import load_dict_from_file
-
-metadata = load_dict_from_file(Path("metadata.yaml"))
-```
-
-### `dict_deep_update`
-
-Recursively merges two dicts. The second dict's values override the first's:
-
-```python
-from neuroconv.utils import dict_deep_update
-
-base = {"NWBFile": {"lab": "old", "institution": "MIT"}}
-override = {"NWBFile": {"lab": "new"}}
-result = dict_deep_update(base, override)
-# result = {"NWBFile": {"lab": "new", "institution": "MIT"}}
-```
-
-### `get_module`
-
-Gets or creates a processing module in an NWB file:
-
-```python
-from neuroconv.tools.nwb_helpers import get_module
-
-# Gets existing "behavior" module or creates it
-behavior_module = get_module(nwbfile, "behavior")
-
-# Then add data interfaces to it
-behavior_module.add(my_time_series)
-```
-
-Or create manually:
-```python
-if "behavior" not in nwbfile.processing:
-    behavior_module = nwbfile.create_processing_module(
-        name="behavior", description="Contains behavior data"
-    )
-else:
-    behavior_module = nwbfile.processing["behavior"]
-```
-
-### `DeepDict`
-
-The metadata type used throughout NeuroConv. Behaves like a nested defaultdict:
-
-```python
-from neuroconv.utils import DeepDict
-
-metadata = DeepDict()
-metadata["NWBFile"]["lab"] = "My Lab"  # Auto-creates nested structure
-```
-
----
-
-## 10. Testing Patterns
-
-### stub_test
-
-The primary testing mechanism during development. Every `session_to_nwb` function should accept `stub_test: bool`:
-
-```python
-def session_to_nwb(..., stub_test: bool = False):
-    if stub_test:
-        output_dir_path = output_dir_path / "nwb_stub"
-    # ...
-    conversion_options.update(dict(Recording=dict(stub_test=stub_test)))
-```
-
-Run it:
-```python
-session_to_nwb(data_dir_path=data_dir_path, output_dir_path=output_dir_path, stub_test=True)
-```
-
-This produces a small NWB file (usually a few MB) that can be quickly inspected.
-
-### nwbinspector
-
-After conversion, validate with nwbinspector:
+## Installation
 
 ```bash
-# Command line
-nwbinspector /path/to/output.nwb
-
-# Or in Python
-from nwbinspector import inspect_nwbfile
-results = list(inspect_nwbfile(nwbfile_path="/path/to/output.nwb"))
-for result in results:
-    print(result)
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[<conversion_name>]"
 ```
 
-Common issues nwbinspector catches:
-- Missing required fields (session_description, session_start_time, identifier)
-- Timezone-naive datetimes (session_start_time must have timezone)
-- Subject fields not matching controlled vocabularies
-- Data without units
-- Empty containers
+## Usage
 
-### CI test (test-install.yml)
+### Single session
+```python
+from <lab>_lab_to_nwb.<conversion_name>.convert_session import session_to_nwb
 
-The GitHub Actions workflow tests that the package can be installed and imported:
-
-```yaml
-name: Installation
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 0 1 * *"  # Monthly
-
-jobs:
-  run:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        python-version: ["3.12"]
-    steps:
-    - uses: actions/checkout@v7
-    - uses: actions/setup-python@v7
-      with:
-        python-version: ${{ matrix.python-version }}
-    - run: pip install uv && uv pip install --system -e .
-    - run: python -c "import <lab>_lab_to_nwb"
+session_to_nwb(
+    data_dir_path="/path/to/session",
+    output_dir_path="/path/to/output",
+    stub_test=False,
+)
 ```
 
-### Manual validation workflow
+### All sessions
+```python
+from <lab>_lab_to_nwb.<conversion_name>.convert_all_sessions import dataset_to_nwb
 
-1. Run `session_to_nwb()` with `stub_test=True`
-2. Open the stub NWB file with `pynwb` or NWB Widgets to visually inspect
-3. Run `nwbinspector` on the stub file
-4. Fix any issues
-5. Run `session_to_nwb()` with `stub_test=False` on one real session
-6. Run `nwbinspector` on the full file
-7. Run `dataset_to_nwb()` for batch conversion
+dataset_to_nwb(
+    data_dir_path="/path/to/data",
+    output_dir_path="/path/to/output",
+    max_workers=4,
+)
+```
+````
 
 ---
 
-## Appendix A: Supporting Files
+## 10. Supporting Files
 
-### make_env.yml
+### LICENSE
 
-```yaml
-name: <lab>_lab_to_nwb_env
-channels:
-- conda-forge
-- defaults
-dependencies:
-- python>=3.10
-- pip
-- pip:
-  - --editable .
-```
+The standard MIT license text, matching `license = "MIT"` in `pyproject.toml`, with the current year and the
+copyright holder the user names.
 
 ### .pre-commit-config.yaml
 
@@ -1132,7 +620,11 @@ repos:
     - tomli
 ```
 
-### auto-publish.yml
+### CI workflows (only if the user wants PyPI publishing)
+
+`.github/workflows/auto-publish.yml` publishes the package when a GitHub release is published. It uses PyPI
+trusted publishing: register the repository and workflow file as a trusted publisher in the PyPI project
+settings. No API token is needed.
 
 ```yaml
 name: Upload Package to PyPI
@@ -1155,24 +647,27 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
 ```
 
-This uses PyPI trusted publishing: register the repository and workflow file as a trusted
-publisher in the PyPI project settings. No API token is needed.
+`.github/workflows/test-install.yml` checks once a month that the package installs and imports:
 
----
+```yaml
+name: Installation
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 1 * *"  # Monthly
 
-## Appendix B: Checklist for Generating a New Repo
-
-1. Create the directory structure as shown in Section 1
-2. Generate `pyproject.toml` with hatchling build system and correct package name
-3. Create `make_env.yml`, `.pre-commit-config.yaml`, `.gitignore`
-4. Copy the GitHub Actions workflows (`test-install.yml`, `auto-publish.yml`)
-5. Write the `metadata.yaml` with all known lab/experiment metadata
-6. Identify which built-in NeuroConv interfaces match each data modality
-7. Write custom `BaseDataInterface` subclasses for data types without built-in interfaces
-8. Write the `NWBConverter` class with all interfaces in `data_interface_classes`
-9. If temporal alignment is needed, override `temporally_align_data_interfaces()`
-10. Write `convert_session.py` following the source_data / conversion_options / metadata layering pattern
-11. Write `convert_all_sessions.py` with the ProcessPoolExecutor pattern
-12. Test with `stub_test=True`
-13. Validate with `nwbinspector`
-14. Write the README with installation and usage instructions
+jobs:
+  run:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        python-version: ["3.12"]
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+    - run: pip install uv && uv pip install --system -e .
+    - run: python -c "import <lab>_lab_to_nwb"
+```
