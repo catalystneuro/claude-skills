@@ -20,11 +20,11 @@ stream from Phase 4. Commit Step 9 per branch. See `knowledge/stacked-prs.md`.
 
 ### Step 1: Scaffold the Repository
 
-Create the standard directory structure INSIDE the repo that was cloned in Phase 1
+Create the standard directory structure INSIDE the repo that was created in Phase 1
 (`nwb-conversions/<lab-name>-to-nwb/`). All files below are relative to the repo root:
 
 ```
-./                              ← repo root (already cloned from Phase 1)
+./                              ← repo root (already created in Phase 1)
 ├── .gitignore                  ← already created in Phase 1
 ├── pyproject.toml
 ├── README.md
@@ -544,7 +544,7 @@ dataset_to_nwb(
 ### Step 9: Commit and Push to nwb-conversions
 
 After all code is generated and the repo is scaffolded, commit everything and push to the
-`nwb-conversions` GitHub org. The remote was set up in Phase 1 via `gh repo create --clone`.
+`nwb-conversions` GitHub org. The remote was configured in Phase 1.
 
 ```bash
 git add -A
