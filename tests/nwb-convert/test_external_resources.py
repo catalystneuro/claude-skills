@@ -237,7 +237,7 @@ def test_phase7_snippet_inside_with_block(package, doc, tmp_path, capsys):
     with_block = doc["phase7_with"].replace("/path/to/output/session.nwb", str(path))
     exec(with_block + "\n" + doc["phase7"], {})
     out = capsys.readouterr().out
-    assert "RRID:IMSR_JAX:000664" in out and "Electrodes: 4 electrodes" in out
+    assert "RRID:IMSR_JAX:000664" in out and "electrodes 4 ('location', 'group', 'group_name', 'channel_name')" in out
     # and the none-written branch
     (package / "external_resources.yaml").write_text("{}\n")
     path = convert(package, tmp_path)
