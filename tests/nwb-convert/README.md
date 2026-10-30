@@ -42,8 +42,9 @@ These are skipped when `ndx-hed` is not installed.
 
 `test_lookups.py` runs every `curl` command in the knowledge file against the live
 registries, checks the facts the text states about their results, and checks that every URL
-in the two files resolves. These depend on third-party services, so they only run with
-`--network`.
+in the two files resolves. `test_fetch_paper.py` checks that `tools/fetch_paper.py` resolves a
+DOI through the NCBI ID converter without a redirect. These depend on third-party services, so
+they only run with `--network`.
 
 ## Running
 
