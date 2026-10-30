@@ -1025,6 +1025,8 @@ Ophys:
       unit: n.a.
 ```
 
+The series type comes from the imaging interface's `photon_series_type` conversion option, which defaults to `TwoPhotonSeries` in most imaging interfaces (Miniscope defaults to `OnePhotonSeries`) whatever the YAML `name` says. For one-photon data, set it in the converter's `conversion_options`, keyed by the interface name: `conversion_options.update(dict(Imaging=dict(photon_series_type="OnePhotonSeries")))`.
+
 ### Per-subject metadata
 
 For datasets with multiple subjects, you can use a separate YAML file for subject-specific metadata:
