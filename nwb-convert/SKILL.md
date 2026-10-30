@@ -147,6 +147,7 @@ details, consult the knowledge base files:
 - `knowledge/conversion-patterns.md` — patterns from real conversion repos
 - `knowledge/nwb-best-practices.md` — NWB conventions and common mistakes (from NWB Inspector)
 - `knowledge/external-resources.md` — linking terms to ontologies and registries with HERD: lookup endpoints and a tested helper
+- `knowledge/notebook-recipes.md`: shared guidance for the Phase 8 and Phase 11 notebooks: pynapple loading, visualization recipes, cell style
 - `knowledge/value-meanings.md` — describing the values of categorical columns with a `MeaningsTable` and annotating them with HED: schema search, validation, and a tested helper
 
 ### Conversion Registry (`nwb-conversions` GitHub org)
