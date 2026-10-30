@@ -287,6 +287,8 @@ rate = 1.0 / df["time"].diff().mean()
 
 ## Session Discovery Patterns
 
+Each dict holds exactly the per-session arguments of `session_to_nwb`.
+
 ### Directory-based (most common)
 
 ```python
@@ -294,10 +296,7 @@ def get_session_to_nwb_kwargs_per_session(data_dir_path):
     sessions = []
     for session_dir in sorted(data_dir_path.iterdir()):
         if session_dir.is_dir() and not session_dir.name.startswith("."):
-            sessions.append(dict(
-                data_dir_path=str(session_dir),
-                session_id=session_dir.name,
-            ))
+            sessions.append(dict(data_dir_path=session_dir))
     return sessions
 ```
 
