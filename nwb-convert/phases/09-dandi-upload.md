@@ -111,18 +111,19 @@ For Python API calls, pass the key explicitly via `DandiAPIClient` (see examples
 
 ### Step 3: Validate Before Upload
 
-Run `dandi validate` on the NWB files before uploading:
+Run NWB Inspector with the DANDI configuration on all NWB files before uploading:
 
 ```bash
-dandi validate /path/to/nwb/output/
+nwbinspector /path/to/nwb/output/ --config dandi
 ```
 
-This checks for DANDI-specific requirements beyond what nwbinspector catches:
-- File naming conventions
-- Required metadata fields (subject_id, session_id)
-- NWB file structure compliance
+Fix every ERROR, PYNWB_VALIDATION, and CRITICAL message before proceeding; `dandi upload` refuses
+files that have them.
 
-Fix any validation errors before proceeding.
+`dandi validate` only works inside a Dandiset folder (one with `dandiset.yaml`); on a plain output
+folder it fails with `DANDI.NO_DANDISET_FOUND`. Inside the Dandiset it also checks the file and
+folder names that `dandi organize` produces. Step 5 runs it after `dandi organize`, and
+`automatic_dandi_upload` in Step 4 validates each file before uploading it.
 
 ### Step 4: Upload Using NeuroConv Helper (Recommended)
 
