@@ -1,98 +1,50 @@
-# Advanced I/O — PyNWB Patterns
+# Large Data and Storage Settings
 
-Patterns for efficient storage of large datasets.
+In a NeuroConv conversion, pass plain arrays (or a lazy iterator for data larger than memory) to PyNWB
+objects. `run_conversion` chunks and compresses every dataset (gzip by default) for both `backend="hdf5"`
+and `backend="zarr"`. Do not wrap data in `H5DataIO`: NeuroConv skips any dataset already wrapped in a
+`DataIO` when it builds the backend configuration, so the dataset gets HDF5's default chunking, ignores
+any `backend_configuration` edits, and loses its compression settings under `backend="zarr"`.
 
-## H5DataIO — Compression and Chunking
+## Data larger than memory
+
+If the data fits in memory, pass the array. Otherwise wrap a sliceable source (a `np.memmap`,
+`h5py.Dataset`, or zarr array) in NeuroConv's iterator, which reads one buffer at a time during write:
 
 ```python
-from hdmf.backends.hdf5.h5_utils import H5DataIO
+import numpy as np
+from neuroconv.tools.hdmf import SliceableDataChunkIterator
 
-# Basic gzip compression (good default)
-compressed = H5DataIO(data=large_array, compression="gzip")
+traces = np.load(file_path, mmap_mode="r")             # shape (n_samples, n_channels)
+data = SliceableDataChunkIterator(data=traces)         # optional: buffer_gb=..., chunk_mb=...
+nwbfile.add_acquisition(TimeSeries(name="traces", description="...", data=data, rate=30_000.0, unit="V"))
+```
 
-# Higher compression level (1-9, default 4)
-compressed = H5DataIO(data=large_array, compression="gzip", compression_opts=9)
+For a source that cannot be sliced directly, subclass `neuroconv.tools.hdmf.GenericDataChunkIterator`
+and implement `_get_data(selection)`, `_get_maxshape()`, and `_get_dtype()`.
 
-# LZF — faster compression/decompression, lower ratio
-compressed = H5DataIO(data=large_array, compression="lzf")
+## Changing chunking or compression
 
-# Custom chunk shape (important for access patterns)
-compressed = H5DataIO(
-    data=large_array,                    # shape: (n_frames, height, width)
-    compression="gzip",
-    chunks=(1, height, width),           # one frame per chunk for frame-by-frame access
-)
+Build the in-memory file, edit the default configuration, and write it. `run_conversion` does not accept
+`backend_configuration` together with `nwbfile`, so write with `configure_and_write_nwbfile`:
 
-# For time series data — chunk along time axis
-compressed = H5DataIO(
-    data=traces,                         # shape: (n_timepoints, n_channels)
-    compression="gzip",
-    chunks=(10000, n_channels),          # 10k timepoints per chunk
+```python
+from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
+nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend="hdf5")
+print(backend_configuration)                           # every dataset with its chunk shape and compressors
+
+dataset_configuration = backend_configuration.dataset_configurations["acquisition/traces/data"]
+dataset_configuration.chunk_shape = (30_000, 1)        # must evenly divide buffer_shape
+dataset_configuration.buffer_shape = (60_000, 16)
+dataset_configuration.compressors = ["gzip"]
+dataset_configuration.compressor_options = [{"level": 9}]
+
+configure_and_write_nwbfile(
+    nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend_configuration=backend_configuration
 )
 ```
 
-## DataChunkIterator — Datasets Too Large for Memory
-
-When data doesn't fit in RAM, use `DataChunkIterator` to stream data during write:
-
-```python
-from hdmf.data_utils import DataChunkIterator
-
-def data_generator():
-    """Yield one chunk at a time from files on disk."""
-    for file_path in sorted(data_files):
-        chunk = np.load(file_path)       # load one chunk at a time
-        yield chunk
-
-data_iterator = DataChunkIterator(
-    data=data_generator(),
-    maxshape=(None, n_channels),         # None = unlimited along first dim
-    dtype=np.float32,
-)
-
-ts = TimeSeries(
-    name="large_recording",
-    data=H5DataIO(data_iterator, compression="gzip"),
-    rate=30000.0,
-    unit="volts",
-)
-nwbfile.add_acquisition(ts)
-```
-
-## GenericDataChunkIterator — From Existing Arrays
-
-For arrays that are already memory-mapped (e.g., from HDF5 or memmap):
-
-```python
-from hdmf.data_utils import GenericDataChunkIterator
-
-class MyIterator(GenericDataChunkIterator):
-    def _get_data(self, selection):
-        return my_memmap[selection]
-
-    def _get_maxshape(self):
-        return my_memmap.shape
-
-    def _get_dtype(self):
-        return my_memmap.dtype
-
-iterator = MyIterator(buffer_gb=1.0)     # process 1 GB at a time
-```
-
-## When to Use Each Approach
-
-| Data Size | Approach |
-|-----------|----------|
-| < 1 GB | `H5DataIO(data=array, compression="gzip")` |
-| 1-10 GB | `H5DataIO` with explicit `chunks` tuned for access pattern |
-| > 10 GB | `DataChunkIterator` or `GenericDataChunkIterator` to stream |
-| Memory-mapped source | `GenericDataChunkIterator` subclass |
-
-## Notes
-
-- Always use compression for large datasets. `gzip` is the safest default (universally
-  supported). `lzf` is faster but HDF5-specific.
-- Chunk shape should match the most common access pattern: if you read frames one at a
-  time, chunk by frame; if you read channels, chunk by channel.
-- `maxshape=(None, ...)` allows the dataset to be extended along the first dimension.
-- The `buffer_gb` parameter on `GenericDataChunkIterator` controls memory usage.
+Pick a chunk shape that matches the common read pattern, for example one frame per chunk for imaging
+(`(1, height, width)`). `backend="zarr"` writes NWB-Zarr with the same configuration API.

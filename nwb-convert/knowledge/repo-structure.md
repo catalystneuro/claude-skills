@@ -897,7 +897,6 @@ This interface demonstrates reading NI-DAQ sync channels to compute behavioral t
 from nwb_conversion_tools.basedatainterface import BaseDataInterface
 from nwb_conversion_tools.utils.types import FolderPathType
 from nwb_conversion_tools.tools.nwb_helpers import get_module
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 from pynwb.behavior import Position, SpatialSeries
 from pynwb import NWBFile, TimeSeries
 
@@ -912,11 +911,11 @@ class Wen21EventsInterface(BaseDataInterface):
 
         # ... read position files, compute temporal offset from NIDQ sync channel ...
 
-        # Add position data with compression
+        # Add position data
         spatial_series_object = SpatialSeries(
             name="position",
             description="position within the virtual reality wheel",
-            data=H5DataIO(position_data, compression="gzip"),
+            data=position_data,
             reference_frame="unknown",
             unit="m",
             conversion=0.01,
@@ -1185,22 +1184,6 @@ base = {"NWBFile": {"lab": "old", "institution": "MIT"}}
 override = {"NWBFile": {"lab": "new"}}
 result = dict_deep_update(base, override)
 # result = {"NWBFile": {"lab": "new", "institution": "MIT"}}
-```
-
-### `H5DataIO`
-
-Wraps numpy arrays for HDF5 compression. Use this for large data arrays:
-
-```python
-from hdmf.backends.hdf5.h5_utils import H5DataIO
-
-spatial_series = SpatialSeries(
-    name="position",
-    data=H5DataIO(position_data, compression="gzip"),
-    timestamps=timestamps,
-    reference_frame="unknown",
-    unit="m",
-)
 ```
 
 ### `get_module`
