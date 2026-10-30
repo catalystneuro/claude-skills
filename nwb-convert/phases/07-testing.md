@@ -95,48 +95,17 @@ Run it via bash and capture the full output:
 nwbinspector /path/to/output/session.nwb --config dandi
 ```
 
-`--config dandi` applies the configuration DANDI uses when it validates a file on upload, which raises the
-subject checks (subject, `subject_id`, species, sex, age) and `check_session_id_no_slashes` to CRITICAL.
-`dandi validate` needs a Dandiset folder, so it runs in Phase 9 after `dandi organize`.
-
-Then analyze every message in the output. NWB Inspector reports issues at 5 severity levels:
-
-| Level | Meaning | Action Required |
-|-------|---------|-----------------|
-| `ERROR` | A check crashed on this file | **Must fix before proceeding** (usually malformed data) |
-| `PYNWB_VALIDATION` | PyNWB schema violations | **Must fix before proceeding** |
-| `CRITICAL` | Will break downstream tools or DANDI upload | **Must fix before proceeding** |
-| `BEST_PRACTICE_VIOLATION` | Violates NWB best practices | **Fix all of these** |
-| `BEST_PRACTICE_SUGGESTION` | Could be improved | Fix if straightforward, otherwise note for the user |
+`knowledge/nwb-best-practices.md` ("Validation") says what `--config dandi` changes and what each severity level
+means. `dandi validate` needs a Dandiset folder, so it runs in Phase 9 after `dandi organize`.
 
 **For each issue reported, you must:**
-1. Identify the root cause in the conversion code
-2. Fix the code (metadata, interface, or convert_session.py)
+1. Find the message's check name in `knowledge/nwb-best-practices.md`, where each rule names the check that reports it
+2. Identify the root cause in the conversion code and fix it (metadata, interface, or convert_session.py)
 3. Re-run the conversion (stub_test=True)
 4. Re-run nwbinspector to confirm the fix
 
-**Common issues and their fixes:**
-
-| Check | Fix |
-|-------|-----|
-| `check_session_start_time_old_date`, `check_session_start_time_future_date` | Take the real date and timezone from the source files |
-| `check_subject_exists`, `check_subject_id_exists`, `check_subject_species_exists` | Fill `Subject` in metadata (required by DANDI) |
-| `check_subject_species_form` | Latin binomial, e.g. "Mus musculus", not "mouse" |
-| `check_subject_age` | ISO 8601 duration, e.g. "P90D", not "90 days" |
-| `check_subject_sex` | One of "M", "F", "U", "O" |
-| `check_description`, `check_empty_string_for_optional_attribute` | Replace placeholder ("no description") or empty text |
-| `check_data_orientation`, `check_timestamps_match_first_dimension` | Time is the first axis, and timestamps match its length |
-| `check_regular_timestamps` | Use `rate` + `starting_time` in place of `timestamps` |
-| `check_timestamp_of_the_first_sample_is_not_negative`, `check_negative_spike_times` | Align times to the session start |
-| `check_timestamps_ascending`, `check_timestamps_without_nans`, `check_ascending_spike_times` | Sort timestamps and remove NaNs |
-| `check_missing_unit`, `check_spatial_series_unit` | Set a unit; SpatialSeries units are full words ("centimeters", not "cm") |
-| `check_resolution`, `check_units_resolution_is_set` | -1.0 if unknown; `Units(resolution=1/sampling_rate)` for spikes |
-| `check_rate_is_not_zero` | Nonzero `rate` (e.g. Suite2p `ops["fs"]`) |
-| `check_ids_unique` | Unique electrode and unit ids |
-| `check_spatial_series_dims`, `check_compass_direction_unit` | 1 to 3 columns; angles in "degrees" or "radians" |
-| `check_image_series_data_size`, `check_image_series_external_file_relative` | Store behavior video as a relative `external_file` |
-
 **Keep iterating until nwbinspector produces zero ERROR, PYNWB_VALIDATION, CRITICAL, and BEST_PRACTICE_VIOLATION messages.**
+Fix a BEST_PRACTICE_SUGGESTION if it is straightforward; otherwise note it for the user.
 Show the user the final clean nwbinspector output as confirmation.
 
 ### Step 5: Run Full Conversion (one session)

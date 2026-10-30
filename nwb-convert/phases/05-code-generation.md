@@ -264,12 +264,6 @@ common mistake. Check:
 - ScanImage, Scanbox, Bruker → `TwoPhotonSeries`
 - If unsure, ask the user whether their microscope uses one-photon or two-photon excitation.
 
-**Key constraints on SpatialSeries:**
-- Only for position data (x, y, z). Velocity and acceleration should use `TimeSeries`.
-- Must have 1, 2, or 3 data columns (not more).
-- When inside `CompassDirection`, units must be `"degrees"` or `"radians"`.
-- When using degrees, data values should be in [-360, 360]; radians in [-2pi, 2pi].
-
 #### Behavioral vs. Stimulus Data
 
 When a dataset has both behavioral and stimulus columns (common in VR experiments),
@@ -303,49 +297,10 @@ behavior_module.add(my_container)
 than memory) and do not wrap them in `H5DataIO`. `run_conversion` chunks and compresses every dataset.
 To change those settings, see `knowledge/pynwb-advanced-io.md`.
 
-#### Time Series Best Practices (from NWB Inspector)
+#### Best Practices
 
-Follow these in every custom interface and `add_to_nwbfile()` method:
-
-1. **Time-first orientation**: data shape must be `(n_timepoints, ...)`. If source data is
-   `(channels, timepoints)`, transpose before adding: `data = data.T`
-2. **Timestamps in seconds**: all timestamps are in seconds relative to `session_start_time`.
-3. **Ascending, non-negative, no NaN**: timestamps must be sorted ascending, >= 0, no NaN.
-4. **Use `rate` for regular sampling**: if the signal has a constant sampling rate, use
-   `rate=<Hz>` and `starting_time=<seconds>` instead of a `timestamps` array.
-5. **SI units via `conversion`**: set `unit` to the SI unit (e.g., `"m"`, `"V"`) and use
-   `conversion` to express the factor from stored data to SI.
-6. **Every text field must be meaningful**: no empty strings for `description`, `unit`, etc.
-7. **Breaks in recording**: if there are gaps, use explicit `timestamps` (not `rate`) or
-   create separate TimeSeries objects per continuous segment.
-
-#### Table Best Practices
-
-When creating DynamicTable objects (trials, epochs, electrodes, custom tables):
-
-- **Boolean columns**: name with `is_` prefix (e.g., `is_correct`, `is_rewarded`)
-- **Timing columns**: name with `_time` suffix (e.g., `start_time`, `reward_time`)
-- **No JSON strings**: don't encode structured data as JSON in string columns
-- **No empty tables**: don't create tables with zero rows
-- **Unique IDs**: keep the default auto-incrementing `id` column
-
-#### Ecephys Best Practices
-
-When working with electrodes and spike sorting data:
-
-- **Electrode `location` is required**: always fill it. Use Allen Brain Atlas terms for mice.
-  Use `"unknown"` only if the region is truly unknown.
-- **Don't duplicate metadata in electrodes table**: don't add `unit`, `gain`, or `offset`
-  columns. Those belong on `ElectricalSeries` (as `channel_conversion` and `offset`).
-- **Spike times must be ascending and positive**: verify sorted order, no negative values.
-- **Use `obs_intervals`** on the units table if the recording has gaps.
-
-#### Video Best Practices
-
-- **Animal behavior videos** (webcam, running wheel cam): store as external files using
-  `ImageSeries(external_file=[relative_path], ...)`. Use relative paths.
-- **Neural imaging data** (two-photon, miniscope): store internally with lossless compression.
-- **Don't set `starting_frame`** unless using `external_file`.
+Every custom interface and `add_to_nwbfile()` method follows `knowledge/nwb-best-practices.md`, in particular
+the Time Series, Tables, ecephys, Behavior, and Image Series sections.
 
 ### Step 5: Write convert_session.py
 
@@ -413,11 +368,7 @@ def session_to_nwb(
     # Subject metadata — subject_id is required for DANDI
     metadata["Subject"]["subject_id"] = subject_id
     # Load per-subject metadata from file if available
-    # See knowledge/nwb-best-practices.md for required formats:
-    #   species: Latin binomial (e.g., "Mus musculus")
-    #   sex: one of "M", "F", "U", "O"
-    #   age: ISO 8601 duration (e.g., "P90D")
-    #   weight: "numeric unit" (e.g., "0.025 kg")
+    # Field formats: knowledge/nwb-best-practices.md (Subject)
 
     # Run conversion
     converter.run_conversion(
