@@ -81,7 +81,8 @@ last aligned value. `TimeIntervalsInterface.align_by_interpolation` also takes a
 
 **Pattern 5: Frame-based alignment (imaging)**
 - Behavioral data logged per imaging frame
-- Action: Use imaging frame times as the time base
+- Action: Use imaging frame times as the time base. For behavioral data in a DataFrame with one row
+  per frame, write it with `starting_time=0.0` and `rate=1.0 / df["time"].diff().mean()`.
 
 **Pattern 6: Multi-clock interpolation (complex)**
 - Multiple independent clocks need cross-alignment (e.g., odor clock, behavior clock, imaging clock)

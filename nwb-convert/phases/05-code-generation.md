@@ -5,7 +5,7 @@
 **Entry**: You have complete experiment spec, interface mapping, metadata, and sync plan.
 
 **Exit criteria**: A working repo with:
-- Correct directory structure (cookiecutter pattern)
+- The directory structure from `knowledge/repo-structure.md`, with `LICENSE` and `.pre-commit-config.yaml`
 - `pyproject.toml` with proper dependencies
 - NWBConverter class with all interfaces
 - `convert_session.py` with full pipeline
@@ -20,89 +20,28 @@ stream from Phase 4. Commit Step 9 per branch. See `knowledge/stacked-prs.md`.
 
 ### Step 1: Scaffold the Repository
 
-Create the standard directory structure INSIDE the repo that was created in Phase 1
-(`nwb-conversions/<lab-name>-to-nwb/`). All files below are relative to the repo root:
+All templates for the files below are in `knowledge/repo-structure.md`. Create the directory
+structure from its Section 1 INSIDE the repo created in Phase 1
+(`nwb-conversions/<lab-name>-to-nwb/`):
 
-```
-./                              ← repo root (already created in Phase 1)
-├── .gitignore                  ← already created in Phase 1
-├── pyproject.toml
-├── README.md
-├── make_env.yml
-└── src/
-    └── <lab>_lab_to_nwb/
-        ├── __init__.py
-        └── <conversion_name>/
-            ├── __init__.py
-            ├── <conversion_name>_nwbconverter.py
-            ├── convert_session.py
-            ├── convert_all_sessions.py
-            ├── metadata.yaml
-            └── <custom_interface_name>.py  (if needed)
-```
+- `pyproject.toml`, `README.md`, `LICENSE` (MIT) and `.pre-commit-config.yaml` at the repo root
+  (`.gitignore` exists from Phase 1)
+- `src/<lab>_lab_to_nwb/<conversion_name>/` with the converter module, `convert_session.py`,
+  `convert_all_sessions.py`, `metadata.yaml` and any custom interface modules
+- `.github/workflows/` only if the user wants the package published to PyPI. Ask.
 
 ### Step 2: Write pyproject.toml
 
-```toml
-[project]
-name = "<lab>-lab-to-nwb"
-version = "0.0.1"
-description = "NWB conversion scripts for the <Lab> Lab."
-readme = "README.md"
-requires-python = ">=3.10"
-license = "MIT"
-authors = [{ name = "CatalystNeuro", email = "ben.dichter@catalystneuro.com" }]
-dependencies = ["neuroconv", "nwbinspector"]
-
-[project.optional-dependencies]
-<conversion_name> = [
-    "neuroconv[<extras>]",  # Use latest during development; pin only after finalization
-    # Add any additional deps needed for custom interfaces
-]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/<lab>_lab_to_nwb"]
-```
-
-Hatchling includes the YAML and JSON files inside the package directory in the wheel, so
-no `include` list is needed. Check the build with `uv build` and list the wheel contents.
-
-**Extras for NeuroConv** depend on which interfaces are used:
-- SpikeGLX: `neuroconv[spikeglx]`
-- OpenEphys: `neuroconv[openephys]`
-- Phy: `neuroconv[phy]`
-- Suite2p: `neuroconv[suite2p]`
-- DeepLabCut: `neuroconv[deeplabcut]`
-- Check NeuroConv's pyproject.toml for all available extras
+Use the template in Section 2 of `knowledge/repo-structure.md`. Add the NeuroConv extras for
+the interfaces in the interface mapping and any packages the custom interfaces need.
 
 ### Step 3: Write the NWBConverter Class
 
-```python
-from neuroconv import NWBConverter
-from neuroconv.datainterfaces import (
-    # Import NeuroConv interfaces based on interface mapping
-)
-# Import custom interfaces
-from .<custom_module> import CustomInterface
-
-
-class <ConversionName>NWBConverter(NWBConverter):
-    """Primary conversion class."""
-
-    data_interface_classes = dict(
-        # Map logical names to interface classes
-        # Names should be descriptive: Recording, LFP, Sorting, Behavior, etc.
-    )
-
-    def temporally_align_data_interfaces(self, metadata: dict | None = None, conversion_options: dict | None = None):
-        """Override if sync logic is needed."""
-        # Implement sync plan from Phase 4
-        pass
-```
+Use the template in Section 3 of `knowledge/repo-structure.md`. List every interface from the
+interface mapping in `data_interface_classes`, and put the sync plan from Phase 4 in
+`temporally_align_data_interfaces()` (Section 8). When interfaces must be built before the
+converter, or some data is added with PyNWB directly, use a pattern from
+`knowledge/conversion-patterns.md`.
 
 ### Step 3a: Reuse NeuroConv Interfaces Before Writing Your Own
 
@@ -154,40 +93,9 @@ If no match is found, write the custom interface from scratch (Step 4 below).
 
 ### Step 4: Write Custom DataInterface Classes
 
-For each data stream that needs custom code:
-
-```python
-from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.utils import DeepDict
-from pydantic import FilePath
-from pynwb.file import NWBFile
-
-
-class <Name>Interface(BaseDataInterface):
-    """Interface for reading <description>."""
-
-    keywords = ["<modality>"]
-
-    def __init__(self, file_path: FilePath):
-        """
-        Parameters
-        ----------
-        file_path : FilePath
-            Path to the <format> file.
-        """
-        super().__init__(file_path=file_path)
-
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
-        # Extract any metadata from the file
-        return metadata
-
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict, **kwargs):
-        # Read data from self.source_data["file_path"]
-        # Create appropriate PyNWB objects
-        # Add to nwbfile
-        pass
-```
+For each data stream that needs custom code, start from the template in Section 6 of
+`knowledge/repo-structure.md`. Follow `knowledge/nwb-best-practices.md` in every custom
+interface.
 
 #### Custom Interface Guidelines
 
@@ -223,7 +131,7 @@ This preserves original data values in the file and is more NWB-idiomatic.
 **Choosing the right NWB types for custom data:**
 
 Always use the most specific NWB type available — don't use bare `TimeSeries` when a
-subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conventions.
+subtype exists.
 
 | Data Type | NWB Container | Where to Add |
 |-----------|---------------|--------------|
@@ -236,6 +144,8 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 | Pupil tracking | `PupilTracking` > `TimeSeries` | `processing["behavior"]` |
 | Eye position | `EyeTracking` > `SpatialSeries` | `processing["behavior"]` |
 | Stimulus times | `TimeIntervals` | `nwbfile.add_stimulus()` |
+| One-photon imaging (Miniscope, Inscopix) | `OnePhotonSeries` | `nwbfile.add_acquisition()` |
+| Two-photon imaging (ScanImage, Scanbox, Bruker) | `TwoPhotonSeries` | `nwbfile.add_acquisition()` |
 | Fluorescence traces | `RoiResponseSeries` | `processing["ophys"]` |
 | ROI masks | `PlaneSegmentation` | `processing["ophys"]` |
 | Reward events | `EventsTable` | `nwbfile.add_events_table()` |
@@ -254,15 +164,9 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 - `knowledge/ndx-pose.md` — ndx-pose extension for pose estimation (DeepLabCut, SLEAP, Lightning Pose)
 - `knowledge/ndx-anatomical-localization.md` — ndx-anatomical-localization for electrode/imaging plane atlas registration
 
-**Single-photon vs. two-photon imaging:**
-Miniscope data (UCLA Miniscope, Inscopix nVista/nVoke) is **single-photon** (one-photon)
-imaging and MUST use `OnePhotonSeries`, not `TwoPhotonSeries`. Two-photon imaging
-(ScanImage, Scanbox, Bruker, Prairie) uses `TwoPhotonSeries`. Getting this wrong is a
-common mistake. Check:
-- Miniscope → `OnePhotonSeries` (via `MiniscopeImagingInterface`)
-- Inscopix → `OnePhotonSeries` (via `InscopixImagingInterface`)
-- ScanImage, Scanbox, Bruker → `TwoPhotonSeries`
-- If unsure, ask the user whether their microscope uses one-photon or two-photon excitation.
+If you are unsure whether a microscope is one-photon or two-photon, ask the user. Most imaging
+interfaces write a `TwoPhotonSeries` unless the `photon_series_type` conversion option says
+otherwise (Section 7 of `knowledge/repo-structure.md`).
 
 **Key constraints on SpatialSeries:**
 - Only for position data (x, y, z). Velocity and acceleration should use `TimeSeries`.
@@ -270,27 +174,12 @@ common mistake. Check:
 - When inside `CompassDirection`, units must be `"degrees"` or `"radians"`.
 - When using degrees, data values should be in [-360, 360]; radians in [-2pi, 2pi].
 
-#### Behavioral vs. Stimulus Data
-
-When a dataset has both behavioral and stimulus columns (common in VR experiments),
-separate them:
-
-**Behavioral data** → `processing["behavior"]` via `BehavioralTimeSeries`, `Position`, etc.:
-- Position / spatial location
-- Running speed / velocity
-- Lick events / lick rate
-- Eye position / pupil diameter
-- Pose estimation keypoints
-
-**Stimulus data** → `nwbfile.add_stimulus()`:
-- Visual stimulus parameters (contrast, orientation, spatial frequency)
-- Environment parameters (morph value, jitter)
-- Optogenetic stimulus waveforms
-- Auditory stimulus parameters
-
-**Reward** can go in either, but prefer `processing["behavior"]` if it represents the
-animal's experience (reward delivery events), or `nwbfile.add_stimulus()` if it represents
-an experimenter-controlled parameter.
+When a dataset mixes behavioral and stimulus columns (common in VR experiments), separate
+them. What the animal did (position, running speed, licks, eye and pupil tracking, pose) goes in
+`processing["behavior"]`. Parameters the experimenter controls (visual contrast, orientation,
+spatial frequency, environment morph, auditory and optogenetic stimulus parameters) go in
+`nwbfile.add_stimulus()`. Reward delivery events are behavior; a reward parameter the
+experimenter sets is stimulus.
 
 **Use `get_module()` to get or create processing modules:**
 ```python
@@ -303,249 +192,26 @@ behavior_module.add(my_container)
 than memory) and do not wrap them in `H5DataIO`. `run_conversion` chunks and compresses every dataset.
 To change those settings, see `knowledge/pynwb-advanced-io.md`.
 
-#### Time Series Best Practices (from NWB Inspector)
-
-Follow these in every custom interface and `add_to_nwbfile()` method:
-
-1. **Time-first orientation**: data shape must be `(n_timepoints, ...)`. If source data is
-   `(channels, timepoints)`, transpose before adding: `data = data.T`
-2. **Timestamps in seconds**: all timestamps are in seconds relative to `session_start_time`.
-3. **Ascending, non-negative, no NaN**: timestamps must be sorted ascending, >= 0, no NaN.
-4. **Use `rate` for regular sampling**: if the signal has a constant sampling rate, use
-   `rate=<Hz>` and `starting_time=<seconds>` instead of a `timestamps` array.
-5. **SI units via `conversion`**: set `unit` to the SI unit (e.g., `"m"`, `"V"`) and use
-   `conversion` to express the factor from stored data to SI.
-6. **Every text field must be meaningful**: no empty strings for `description`, `unit`, etc.
-7. **Breaks in recording**: if there are gaps, use explicit `timestamps` (not `rate`) or
-   create separate TimeSeries objects per continuous segment.
-
-#### Table Best Practices
-
-When creating DynamicTable objects (trials, epochs, electrodes, custom tables):
-
-- **Boolean columns**: name with `is_` prefix (e.g., `is_correct`, `is_rewarded`)
-- **Timing columns**: name with `_time` suffix (e.g., `start_time`, `reward_time`)
-- **No JSON strings**: don't encode structured data as JSON in string columns
-- **No empty tables**: don't create tables with zero rows
-- **Unique IDs**: keep the default auto-incrementing `id` column
-
-#### Ecephys Best Practices
-
-When working with electrodes and spike sorting data:
-
-- **Electrode `location` is required**: always fill it. Use Allen Brain Atlas terms for mice.
-  Use `"unknown"` only if the region is truly unknown.
-- **Don't duplicate metadata in electrodes table**: don't add `unit`, `gain`, or `offset`
-  columns. Those belong on `ElectricalSeries` (as `channel_conversion` and `offset`).
-- **Spike times must be ascending and positive**: verify sorted order, no negative values.
-- **Use `obs_intervals`** on the units table if the recording has gaps.
-
-#### Video Best Practices
-
-- **Animal behavior videos** (webcam, running wheel cam): store as external files using
-  `ImageSeries(external_file=[relative_path], ...)`. Use relative paths.
-- **Neural imaging data** (two-photon, miniscope): store internally with lossless compression.
-- **Don't set `starting_frame`** unless using `external_file`.
-
 ### Step 5: Write convert_session.py
 
-Follow the standard pattern:
-
-```python
-from pathlib import Path
-from zoneinfo import ZoneInfo
-
-from neuroconv.utils import load_dict_from_file, dict_deep_update
-
-from <lab>_lab_to_nwb.<conversion_name>.<conversion_name>_nwbconverter import <ConversionName>NWBConverter
-
-
-def session_to_nwb(
-    data_dir_path: str | Path,
-    output_dir_path: str | Path,
-    stub_test: bool = False,
-):
-    data_dir_path = Path(data_dir_path)
-    output_dir_path = Path(output_dir_path)
-    if stub_test:
-        output_dir_path = output_dir_path / "nwb_stub"
-    output_dir_path.mkdir(parents=True, exist_ok=True)
-
-    # Determine session_id and subject_id from path/filenames
-    session_id = "..."
-    subject_id = "..."
-    nwbfile_path = output_dir_path / f"{session_id}.nwb"
-
-    # Build source_data
-    source_data = dict()
-    conversion_options = dict()
-
-    # Add each interface with its file paths
-    # Pass every required source_data argument the interface lists in neuroconv-interfaces.yaml
-    # (SpikeGLXRecordingInterface shown here)
-    source_data["Recording"] = dict(folder_path=str(data_dir_path / "..."), stream_id="imec0.ap")
-    conversion_options["Recording"] = dict(stub_test=stub_test)
-
-    # Conditionally add interfaces if files exist
-    behavior_path = data_dir_path / "behavior.txt"
-    if behavior_path.is_file():
-        source_data["Behavior"] = dict(file_path=str(behavior_path))
-        conversion_options["Behavior"] = dict()
-
-    # Create converter
-    converter = <ConversionName>NWBConverter(source_data=source_data)
-
-    # Get and merge metadata
-    metadata = converter.get_metadata()
-
-    metadata_path = Path(__file__).parent / "metadata.yaml"
-    editable_metadata = load_dict_from_file(metadata_path)
-    metadata = dict_deep_update(metadata, editable_metadata)
-
-    # Set session-specific metadata
-    tz = ZoneInfo("<timezone>")
-    if metadata["NWBFile"]["session_start_time"]:
-        metadata["NWBFile"]["session_start_time"] = (
-            metadata["NWBFile"]["session_start_time"].replace(tzinfo=tz)
-        )
-    metadata["NWBFile"]["session_id"] = session_id
-
-    # Subject metadata — subject_id is required for DANDI
-    metadata["Subject"]["subject_id"] = subject_id
-    # Load per-subject metadata from file if available
-    # See knowledge/nwb-best-practices.md for required formats:
-    #   species: Latin binomial (e.g., "Mus musculus")
-    #   sex: one of "M", "F", "U", "O"
-    #   age: ISO 8601 duration (e.g., "P90D")
-    #   weight: "numeric unit" (e.g., "0.025 kg")
-
-    # Run conversion
-    converter.run_conversion(
-        nwbfile_path=nwbfile_path,
-        metadata=metadata,
-        conversion_options=conversion_options,
-        overwrite=True,
-    )
-
-
-if __name__ == "__main__":
-    # Example usage
-    data_dir_path = Path("/path/to/data")
-    output_dir_path = Path("/path/to/output")
-    session_to_nwb(
-        data_dir_path=data_dir_path,
-        output_dir_path=output_dir_path,
-        stub_test=True,  # Set to False for full conversion
-    )
-```
+Use the template in Section 4 of `knowledge/repo-structure.md`. Add a `source_data` and
+`conversion_options` entry for each interface, conditional on the files a session has, and fill
+the per-session metadata (`session_id`, `subject_id`, timezone-aware `session_start_time`).
 
 ### Step 6: Write convert_all_sessions.py
 
-Each dict returned by `get_session_to_nwb_kwargs_per_session` holds exactly the per-session
-arguments of `session_to_nwb`. Failed sessions write their traceback to
-`<output_dir_path>/exceptions/`.
-
-```python
-import traceback
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from pathlib import Path
-from pprint import pformat
-
-from <lab>_lab_to_nwb.<conversion_name>.convert_session import session_to_nwb
-
-
-def get_session_to_nwb_kwargs_per_session(data_dir_path: Path) -> list[dict]:
-    """Return one dict of session_to_nwb arguments per session, e.g. dict(data_dir_path=session_dir_path)."""
-    raise NotImplementedError("Implement session discovery")
-
-
-def safe_session_to_nwb(session_to_nwb_kwargs: dict, exception_file_path: Path):
-    """Run session_to_nwb and write any exception to exception_file_path."""
-    try:
-        session_to_nwb(**session_to_nwb_kwargs)
-    except Exception:
-        with open(exception_file_path, mode="w") as file:
-            file.write(f"session_to_nwb_kwargs:\n{pformat(session_to_nwb_kwargs)}\n\n")
-            file.write(traceback.format_exc())
-
-
-def dataset_to_nwb(
-    data_dir_path: str | Path,
-    output_dir_path: str | Path,
-    max_workers: int = 1,
-    stub_test: bool = False,
-):
-    data_dir_path = Path(data_dir_path)
-    output_dir_path = Path(output_dir_path)
-    exception_dir_path = output_dir_path / "exceptions"
-    exception_dir_path.mkdir(parents=True, exist_ok=True)
-
-    session_to_nwb_kwargs_per_session = get_session_to_nwb_kwargs_per_session(data_dir_path=data_dir_path)
-
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
-        for session_to_nwb_kwargs in session_to_nwb_kwargs_per_session:
-            session_to_nwb_kwargs.update(output_dir_path=output_dir_path, stub_test=stub_test)
-            session_name = Path(session_to_nwb_kwargs["data_dir_path"]).name
-            exception_file_path = exception_dir_path / f"{session_name}.txt"
-            futures.append(executor.submit(safe_session_to_nwb, session_to_nwb_kwargs, exception_file_path))
-        for future in as_completed(futures):
-            future.result()
-
-
-if __name__ == "__main__":
-    dataset_to_nwb(
-        data_dir_path=Path("/path/to/data"),
-        output_dir_path=Path("~/conversion_nwb").expanduser(),
-        max_workers=1,
-        stub_test=False,
-    )
-```
+Use the template in Section 5 of `knowledge/repo-structure.md` and write
+`get_session_to_nwb_kwargs_per_session` for this dataset's session layout.
 
 ### Step 7: Write metadata.yaml
 
-Use the metadata collected in Phase 3. See Phase 3 for format.
+Write the metadata collected in Phase 3 in the format of Section 7 of
+`knowledge/repo-structure.md`. For more than one subject, add the per-subject file described there.
 
-### Step 8: Write README.md
+### Step 8: Write README.md, LICENSE, and Supporting Files
 
-```markdown
-# <lab>-lab-to-nwb
-
-NWB conversion scripts for the [<Lab> Lab](lab_url) data,
-using [NeuroConv](https://github.com/catalystneuro/neuroconv).
-
-## Installation
-
-```bash
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[<conversion_name>]"
-```
-
-## Usage
-
-### Single session
-```python
-from <lab>_lab_to_nwb.<conversion_name>.convert_session import session_to_nwb
-
-session_to_nwb(
-    data_dir_path="/path/to/session",
-    output_dir_path="/path/to/output",
-    stub_test=False,
-)
-```
-
-### All sessions
-```python
-from <lab>_lab_to_nwb.<conversion_name>.convert_all_sessions import dataset_to_nwb
-
-dataset_to_nwb(
-    data_dir_path="/path/to/data",
-    output_dir_path="/path/to/output",
-    max_workers=4,
-)
-```
-```
+Use Sections 9 and 10 of `knowledge/repo-structure.md`: the README, the MIT `LICENSE`,
+`.pre-commit-config.yaml`, and the CI workflows if the user wants PyPI publishing.
 
 ### Step 9: Commit and Push to nwb-conversions
 

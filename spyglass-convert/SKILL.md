@@ -112,12 +112,12 @@ $file: ./phases/10-notebook.md
   vs. open a Spyglass issue; SpyglassMixin + dj.Imported implementation pattern
 
 **Shared with nwb-convert** (read these on demand from the nwb-convert skill):
-- `../nwb-convert/knowledge/repo-structure.md` — canonical pyproject.toml format,
-  directory naming conventions, CI workflow templates
+- `../nwb-convert/knowledge/repo-structure.md` — repo file templates (pyproject.toml,
+  directory naming conventions, session discovery, CI workflow templates)
 - `../nwb-convert/knowledge/nwb-best-practices.md` — NWB conventions shared across
   all conversions (timestamps, units, data orientation, etc.)
-- `../nwb-convert/knowledge/conversion-patterns.md` — MATLAB reading (pymatreader,
-  matio, h5py), session discovery, position data, trial tables, sync recipes
+- `../nwb-convert/knowledge/conversion-patterns.md` — converter patterns and MATLAB reading
+  (pymatreader, matio, h5py)
 - `../nwb-convert/knowledge/pynwb-behavior.md` — behavior container types
   (BehavioralTimeSeries, Position, PupilTracking, etc.)
 - `../nwb-convert/knowledge/pynwb-advanced-io.md` — H5DataIO compression, chunking,
