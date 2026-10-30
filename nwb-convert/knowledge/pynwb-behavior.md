@@ -18,7 +18,7 @@ All containers go in `processing["behavior"]`.
 ## Position
 
 ```python
-from pynwb.behavior import Position, SpatialSeries
+from pynwb.behavior import Position
 from neuroconv.tools.nwb_helpers import get_module
 
 position = Position()
@@ -29,6 +29,7 @@ position.create_spatial_series(
     unit="meters",
     reference_frame="Top-left corner of arena",
     conversion=0.01,            # if data is in cm
+    description="Animal position from overhead camera",
 )
 
 behavior = get_module(nwbfile, "behavior", "Processed behavioral data")
@@ -41,7 +42,6 @@ For **continuous** behavioral signals sampled at regular intervals:
 
 ```python
 from pynwb.behavior import BehavioralTimeSeries
-from pynwb import TimeSeries
 
 bts = BehavioralTimeSeries()
 bts.create_timeseries(
@@ -99,7 +99,7 @@ behavior.add(pt)
 ## EyeTracking
 
 ```python
-from pynwb.behavior import EyeTracking, SpatialSeries
+from pynwb.behavior import EyeTracking
 
 et = EyeTracking()
 et.create_spatial_series(
@@ -116,7 +116,7 @@ behavior.add(et)
 ## CompassDirection
 
 ```python
-from pynwb.behavior import CompassDirection, SpatialSeries
+from pynwb.behavior import CompassDirection
 
 cd = CompassDirection()
 cd.create_spatial_series(
@@ -125,6 +125,7 @@ cd.create_spatial_series(
     rate=30.0,
     unit="radians",              # must be "radians" or "degrees"
     reference_frame="0=East, pi/2=North",
+    description="Head direction from overhead camera",
 )
 behavior.add(cd)
 ```

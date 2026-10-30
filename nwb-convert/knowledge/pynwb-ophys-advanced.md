@@ -28,7 +28,7 @@ imaging_plane = nwbfile.create_imaging_plane(
     excitation_lambda=920.0,
     indicator="GCaMP6f",
     location="CA1",
-    grid_spacing=[0.001, 0.001],       # meters per pixel (1 um/px)
+    grid_spacing=[1e-6, 1e-6],         # meters per pixel (1 um/px)
     grid_spacing_unit="meters",
 )
 ```
@@ -61,7 +61,8 @@ nwbfile.add_acquisition(one_photon)
 
 ## PlaneSegmentation — ROI Masks
 
-Three mask formats are supported. Use the one that matches your segmentation output:
+Use `pixel_mask` (sparse) or `image_mask` (dense), whichever matches your segmentation output.
+`voxel_mask` is the 3-D analogue of `pixel_mask`, for volumetric ROIs.
 
 **pixel_mask** — sparse format, best for small ROIs in large FOV:
 ```python
@@ -134,14 +135,24 @@ dff.create_roi_response_series(
 ## MotionCorrection
 
 ```python
-from pynwb.ophys import MotionCorrection, CorrectedImageStack
+from pynwb import TimeSeries
+from pynwb.ophys import MotionCorrection, CorrectedImageStack, TwoPhotonSeries
 
+corrected_two_photon = TwoPhotonSeries(
+    name="corrected",                   # fixed by the schema
+    description="Motion-corrected imaging data",
+    data=corrected_data,                # shape: (n_frames, height, width)
+    imaging_plane=imaging_plane,
+    rate=30.0,
+    unit="n.a.",
+)
 corrected = CorrectedImageStack(
-    corrected=corrected_two_photon,    # TwoPhotonSeries (corrected data)
-    original=two_photon,                # TwoPhotonSeries (original data)
+    corrected=corrected_two_photon,
+    original=two_photon,                # TwoPhotonSeries (original data) in acquisition
     xy_translation=TimeSeries(
-        name="xy_translation",
-        data=shifts,                    # shape: (n_frames, 2) — x,y shifts
+        name="xy_translation",          # fixed by the schema
+        description="Per-frame x, y shifts",
+        data=shifts,                    # shape: (n_frames, 2)
         rate=30.0,
         unit="pixels",
     ),
