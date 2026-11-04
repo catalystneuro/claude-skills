@@ -6,8 +6,8 @@ check each stream on its own without reading the conversion code. The lab gets o
 notebook with combined analyses that serves as a starting point for analysis. Both validate
 the conversion output before the data is uploaded to DANDI.
 
-**Entry**: Testing and validation are complete (Phase 7). At least one full NWB file has
-been written to disk.
+**Entry**: Testing and validation are complete (Phase 7). Every session has been converted
+in full and written to disk.
 
 **Exit criteria**: Tested `.ipynb` notebooks that run end-to-end loading local NWB files: one
 review notebook per data stream (Step 4), and a demo notebook with clear prose and at least
