@@ -121,17 +121,22 @@ column that have no meaning and validates the HED strings as they were written.
 Run it via bash and capture the full output:
 
 ```bash
-nwbinspector /path/to/output/session.nwb
+nwbinspector /path/to/output/session.nwb --config dandi
 ```
 
-Then analyze every message in the output. NWB Inspector reports issues at 4 severity levels:
+`--config dandi` applies the configuration DANDI uses when it validates a file on upload, which raises the
+subject checks (subject, `subject_id`, species, sex, age) and `check_session_id_no_slashes` to CRITICAL.
+`dandi validate` needs a Dandiset folder, so it runs in Phase 9 after `dandi organize`.
+
+Then analyze every message in the output. NWB Inspector reports issues at 5 severity levels:
 
 | Level | Meaning | Action Required |
 |-------|---------|-----------------|
-| `CRITICAL_IMPORTANCE` | Will break downstream tools or DANDI upload | **Must fix before proceeding** |
+| `ERROR` | A check crashed on this file | **Must fix before proceeding** (usually malformed data) |
+| `PYNWB_VALIDATION` | PyNWB schema violations | **Must fix before proceeding** |
+| `CRITICAL` | Will break downstream tools or DANDI upload | **Must fix before proceeding** |
 | `BEST_PRACTICE_VIOLATION` | Violates NWB best practices | **Fix all of these** |
 | `BEST_PRACTICE_SUGGESTION` | Could be improved | Fix if straightforward, otherwise note for the user |
-| `PYNWB_VALIDATION` | PyNWB schema violations | **Must fix before proceeding** |
 
 **For each issue reported, you must:**
 1. Identify the root cause in the conversion code
@@ -141,53 +146,26 @@ Then analyze every message in the output. NWB Inspector reports issues at 4 seve
 
 **Common issues and their fixes:**
 
-| Inspector Message | Fix |
-|-------------------|-----|
-| `check_session_start_time_old_date` | Session start time is wrong or default — extract real date from source files |
-| `check_session_start_time_future_date` | Timezone conversion error — verify ZoneInfo usage |
-| `check_missing_text_for_session_description` | Add `session_description` to metadata.yaml or set it in convert_session.py |
-| `check_subject_species_latin_binomial` | Use "Mus musculus" not "mouse", "Rattus norvegicus" not "rat" |
-| `check_subject_species_form` | Species should be binomial (e.g., "Mus musculus") |
-| `check_subject_age` | Format as ISO 8601 duration: "P90D" not "90 days" |
-| `check_subject_sex` | Must be one of: "M", "F", "U", "O" |
-| `check_data_orientation` | Time should be the first dimension. Transpose data if needed |
-| `check_timestamps_match_first_dimension` | Length of timestamps must equal first dim of data |
-| `check_regular_timestamps` | If data has constant rate, use `rate` + `starting_time` instead of `timestamps` |
-| `check_timestamp_of_the_first_sample_is_not_negative` | Timestamps should start >= 0. Adjust offset |
-| `check_missing_unit` | TimeSeries must have `unit` specified |
-| `check_resolution` | Set resolution=-1.0 if unknown, otherwise provide actual resolution |
-| `check_electrodes_table_global_ids_are_not_unique` | Electrode IDs must be unique across all probes |
-| `check_empty_string_for_*` | Replace empty strings with actual descriptions |
-| `check_imaging_plane_excitation_lambda` | Set `excitation_lambda` on ImagingPlane in metadata |
-| `check_imaging_plane_indicator` | Set `indicator` on ImagingPlane (e.g., "GCaMP6f") |
-| `check_imaging_plane_location` | Set `location` on ImagingPlane (e.g., "CA1") |
-| `check_rate_is_not_zero` | TwoPhotonSeries must have nonzero `rate` — check Suite2p ops["fs"] |
-| `check_plane_segmentation_image_mask_shape` | ROI masks must match imaging plane dimensions |
-| `check_spatial_series_dims` | SpatialSeries must have 1, 2, or 3 data columns only |
-| `check_compass_direction_unit` | CompassDirection SpatialSeries must use "degrees" or "radians" |
-| `check_image_series_data_size` | Animal behavior videos should use external_file, not internal storage |
-| `check_image_series_external_file_relative` | External file paths must be relative, not absolute |
-| `check_no_empty_string_for_*` | All text fields (description, unit) must be non-empty |
-| `check_timestamps_without_nans` | Timestamps must not contain NaN values |
-| `check_timestamps_ascending` | Timestamps must be sorted in ascending order |
-| `check_negative_spike_times` | All spike times must be >= 0 (session-aligned, not trial-aligned) |
-| `check_ascending_spike_times` | Spike times within each unit must be in ascending order |
-| `check_subject_exists` | NWBFile must have a Subject object |
-| `check_subject_id_exists` | Subject must have subject_id set (required for DANDI) |
-| `check_electrode_location` | Electrode location column must be filled (use "unknown" if needed) |
+| Check | Fix |
+|-------|-----|
+| `check_session_start_time_old_date`, `check_session_start_time_future_date` | Take the real date and timezone from the source files |
+| `check_subject_exists`, `check_subject_id_exists`, `check_subject_species_exists` | Fill `Subject` in metadata (required by DANDI) |
+| `check_subject_species_form` | Latin binomial, e.g. "Mus musculus", not "mouse" |
+| `check_subject_age` | ISO 8601 duration, e.g. "P90D", not "90 days" |
+| `check_subject_sex` | One of "M", "F", "U", "O" |
+| `check_description`, `check_empty_string_for_optional_attribute` | Replace placeholder ("no description") or empty text |
+| `check_data_orientation`, `check_timestamps_match_first_dimension` | Time is the first axis, and timestamps match its length |
+| `check_regular_timestamps` | Use `rate` + `starting_time` in place of `timestamps` |
+| `check_timestamp_of_the_first_sample_is_not_negative`, `check_negative_spike_times` | Align times to the session start |
+| `check_timestamps_ascending`, `check_timestamps_without_nans`, `check_ascending_spike_times` | Sort timestamps and remove NaNs |
+| `check_missing_unit`, `check_spatial_series_unit` | Set a unit; SpatialSeries units are full words ("centimeters", not "cm") |
+| `check_resolution`, `check_units_resolution_is_set` | -1.0 if unknown; `Units(resolution=1/sampling_rate)` for spikes |
+| `check_rate_is_not_zero` | Nonzero `rate` (e.g. Suite2p `ops["fs"]`) |
+| `check_ids_unique` | Unique electrode and unit ids |
+| `check_spatial_series_dims`, `check_compass_direction_unit` | 1 to 3 columns; angles in "degrees" or "radians" |
+| `check_image_series_data_size`, `check_image_series_external_file_relative` | Store behavior video as a relative `external_file` |
 
-**Also run `dandi validate` if the user plans to upload to DANDI:**
-
-```bash
-dandi validate /path/to/output/
-```
-
-This catches DANDI-specific requirements beyond nwbinspector:
-- `subject_id` must be set
-- `session_id` must be set
-- File naming conventions for DANDI organize
-
-**Keep iterating until nwbinspector produces zero CRITICAL and zero BEST_PRACTICE_VIOLATION messages.**
+**Keep iterating until nwbinspector produces zero ERROR, PYNWB_VALIDATION, CRITICAL, and BEST_PRACTICE_VIOLATION messages.**
 Show the user the final clean nwbinspector output as confirmation.
 
 ### Step 5: Run Full Conversion (one session)
@@ -267,7 +245,6 @@ After all tests pass and nwbinspector is clean, commit any bug fixes and push:
 git add -A
 git commit -m "Phase 7: testing and validation — all checks passing
 
-nwbinspector: 0 CRITICAL, 0 BEST_PRACTICE_VIOLATION
-dandi validate: passed"
+nwbinspector --config dandi: 0 CRITICAL, 0 BEST_PRACTICE_VIOLATION"
 if git remote get-url origin &>/dev/null; then git push; fi
 ```
