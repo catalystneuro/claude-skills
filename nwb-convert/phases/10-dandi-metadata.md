@@ -69,9 +69,6 @@ After saving, add a short section to `conversion_notes.md` listing what was fill
 anything left open (for example "contact email pending", "ethics protocol to confirm"),
 then commit it.
 
-After Phase 11, add the example notebook to the Dandiset's related resources through the
-same skill (relation `dcite:IsSupplementedBy`, resource type `dcite:ComputationalNotebook`).
-
 ### Publishing
 
 Publishing is the owner's step, and it is not reversible:
