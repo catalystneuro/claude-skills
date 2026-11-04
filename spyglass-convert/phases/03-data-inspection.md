@@ -14,7 +14,7 @@ map to NeuroConv interfaces — with a Spyglass compatibility lens.
 - **Common gotchas** — MATLAB v7.3 HDF5, SpikeGLX .bin + .meta co-location, multiple probes
 
 For MATLAB files, prefer `pymatreader` (see
-`../nwb-convert/knowledge/conversion-patterns.md` §"Reading MATLAB .mat files").
+`../nwb-convert/knowledge/reading-source-files.md` §"MATLAB .mat files").
 
 **Exit criteria**: For each data stream you know:
 - The exact file format and can read it programmatically
@@ -72,7 +72,7 @@ with h5py.File(path) as f:
 ```
 
 For a complete MATLAB reading decision tree (pymatreader vs matio vs h5py vs
-hdf5storage), see `../nwb-convert/knowledge/conversion-patterns.md` §"Reading MATLAB .mat files".
+hdf5storage), see `../nwb-convert/knowledge/reading-source-files.md` §"MATLAB .mat files".
 
 # CSV/text
 import pandas as pd
