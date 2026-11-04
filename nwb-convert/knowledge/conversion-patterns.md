@@ -3,8 +3,8 @@
 How particular conversion problems are solved, with examples from CatalystNeuro conversion repos. The files
 every conversion repo has are in `knowledge/repo-structure.md`.
 
-Real examples are copied verbatim from the linked commits. Lines marked `# OUTDATED` show what the source did,
-with the current replacement in the comment.
+Real examples are copied verbatim from the linked commits. Lines marked `# OUTDATED` or `# BUG` show what the
+source did, with the current replacement or the fix in the comment.
 
 ---
 
@@ -470,7 +470,7 @@ class Zaki2024NWBConverter(NWBConverter):
                 if "Video" in self.data_interface_objects:
                     video_interface = self.data_interface_objects["Video"]
                     video_timestamps = video_interface.get_original_timestamps()
-                    # OUTDATED: get_original_timestamps returns a list with one array per video file, so adding a float raises TypeError; use [timestamps + time_shift for timestamps in video_timestamps]
+                    # BUG: get_original_timestamps returns a list with one array per video file, so adding a float raises TypeError; use [timestamps + time_shift for timestamps in video_timestamps]
                     aligned_video_timestamps = video_timestamps + time_shift
                     video_interface.set_aligned_timestamps(aligned_video_timestamps)
 ```
@@ -569,7 +569,9 @@ class GiocomoVRInterface(BaseDataInterface):
 Devices, imaging planes, and series go in the dict format that `get_metadata()` returns. `MicroscopySeries`,
 `PlaneSegmentations` and the other per-interface entries are keyed by each interface's `metadata_key`. Print
 `converter.get_metadata()` and each ophys interface's `get_metadata_template()` and write the YAML in that shape.
-Entries in the old list format (`Ophys: Device: - name: ...`) are deprecated: NeuroConv converts them and warns.
+Entries in the old list format (`Ophys: Device: - name: ...`) are deprecated. Merged onto `get_metadata()`, their
+values are not written (the file gets `PlaceholderMicroscope` and indicator `"unknown"`), and NeuroConv only warns
+that the format is deprecated.
 
 ```yaml
 DeviceModels:
