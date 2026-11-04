@@ -17,6 +17,9 @@ behavioral events won't align with neural data.
 
 ### Common Synchronization Patterns
 
+The code for each pattern, with real examples, is in the Temporal Alignment section of
+`knowledge/conversion-patterns.md`.
+
 **Pattern 1: Shared clock (simplest)**
 - All data comes from the same system (e.g., SpikeGLX records both neural and NIDQ)
 - Or all data was processed together with aligned timestamps
@@ -28,60 +31,19 @@ behavioral events won't align with neural data.
 - Action: Extract TTL times from both streams, use as alignment anchors. Use NeuroConv's helpers
   for edge detection and alignment instead of thresholding and interpolating by hand.
 
-```python
-from neuroconv import NWBConverter
-from neuroconv.datainterfaces import SpikeGLXNIDQInterface
-
-
-class MyConverter(NWBConverter):
-    data_interface_classes = dict(NIDQ=SpikeGLXNIDQInterface, Behavior=MyBehaviorInterface)
-
-    def temporally_align_data_interfaces(self, metadata=None, conversion_options=None):
-        nidq_interface = self.data_interface_objects["NIDQ"]
-        behavior_interface = self.data_interface_objects["Behavior"]
-
-        # Rising-edge times on the NIDQ clock. Name the channel as the board does ("XA2", not "nidq#XA2").
-        ttl_times = nidq_interface.get_event_times_from_ttl(channel_name="XA2")
-
-        # The same events as logged on the behavior clock
-        behavior_sync_times = ...
-        behavior_interface.align_by_interpolation(
-            unaligned_timestamps=behavior_sync_times,
-            aligned_timestamps=ttl_times[: len(behavior_sync_times)],
-        )
-```
-
-For TTLs recorded by other systems, read the trace and pass it to
-`neuroconv.tools.signal_processing.get_rising_frames_from_ttl(trace, threshold=None)` (or
-`get_falling_frames_from_ttl`). It returns frame indices; index the stream's timestamps with them
-(`timestamps[rising_frames]`) so the stream's start time is kept. The threshold defaults to the trace mean.
-
 **Pattern 3: Starting time offset**
 - Streams start at different times but run at the same rate
 - Action: Compute the offset and use `set_aligned_starting_time()`
-
-```python
-interface.set_aligned_starting_time(offset_seconds)
-```
 
 **Pattern 4: Interpolation between clocks**
 - Streams run on different clocks that may drift
 - Periodic sync pulses recorded by both systems
 - Action: Use `align_by_interpolation()` with matched timepoints
 
-```python
-interface.align_by_interpolation(
-    unaligned_timestamps=sync_times_in_this_clock,
-    aligned_timestamps=sync_times_in_reference_clock
-)
-```
-
-This uses `np.interp`, so timestamps outside the range of the sync times are clamped to the first or
-last aligned value. `TimeIntervalsInterface.align_by_interpolation` also takes a `column` argument.
-
 **Pattern 5: Frame-based alignment (imaging)**
 - Behavioral data logged per imaging frame
-- Action: Use imaging frame times as the time base
+- Action: Use imaging frame times as the time base. For behavioral data in a DataFrame with one row
+  per frame, write it with `starting_time=0.0` and `rate=1.0 / df["time"].diff().mean()`.
 
 **Pattern 6: Multi-clock interpolation (complex)**
 - Multiple independent clocks need cross-alignment (e.g., odor clock, behavior clock, imaging clock)

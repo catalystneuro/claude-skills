@@ -22,8 +22,8 @@ main ← setup ← <reference_stream> ← <stream_2> ← ... ← <stream_n>
 ## What goes on each branch
 
 **`setup`**: everything from Phases 1 to 4 (`conversion_notes.md`, collected metadata), plus
-the repo scaffold from Phase 5: `pyproject.toml`, `README.md`, `make_env.yml`, session-level
-`metadata.yaml` (NWBFile, Subject), the NWBConverter with no data interfaces yet,
+the repo scaffold from Phase 5: `pyproject.toml`, `README.md`, `LICENSE`, `.pre-commit-config.yaml`,
+session-level `metadata.yaml` (NWBFile, Subject), the NWBConverter with no data interfaces yet,
 `convert_session.py` and `convert_all_sessions.py`. The ontology annotation helper from
 Phase 6 and the session-level terms in `external_resources.yaml` (species, strain,
 institution, experimenters) also go here.
