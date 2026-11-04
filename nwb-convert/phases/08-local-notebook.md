@@ -319,6 +319,7 @@ conversion code. Use the same demo session, file access pattern, and cell style 
    such as event counts per type or the first samples next to the values read from the
    source files.
 
+### Step 4: Run, Check, and Commit the Notebooks
 
 Run every notebook end-to-end using `jupyter execute`:
 

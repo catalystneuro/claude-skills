@@ -6,15 +6,14 @@ The conversion agent should follow these when generating code.
 
 ## General
 
-- **CamelCase for neurodata_type names** (e.g., `ElectricalSeries`, `SpatialSeries`).
-- **snake_case for object names** (groups, datasets, attributes). No spaces — use underscores.
-- **No slashes or colons in names** — these are path separators in HDF5.
+- **Object names**: name an object after its neurodata_type (`ElectricalSeries`). When several share a group, add a CamelCase suffix (`ElectricalSeriesAP`, `ElectricalSeriesLF`). Put distinguishing information in `description`, not the name.
+- **No `/`, `\`, or `:` in names** (`/` is the HDF5 path separator). Write `DfOverF`, not `Df/f`.
 - **No empty strings** — every `description`, `unit`, and text field must have meaningful content. Empty strings and placeholder text like "no description" will be flagged.
 - **Avoid metadata duplication** — don't store the same metadata in multiple places. For example, don't add `unit` or `gain` columns to the electrodes table when those belong on `ElectricalSeries`.
 
 ## NWBFile Metadata
 
-- **File extension**: always `.nwb`.
+- **File extension**: `.nwb` (or `.nwb.zarr` for Zarr).
 - **`identifier`**: must be globally unique. Use `str(uuid.uuid4())`.
 - **`session_start_time`**: must include timezone info. All other timestamps are relative to this.
 - **`timestamps_reference_time`**: defaults to `session_start_time`. Only set explicitly if different.
@@ -26,18 +25,18 @@ The conversion agent should follow these when generating code.
 - **`keywords`**: list of relevant keywords for discoverability.
 - **`related_publications`**: use DOI format: `"doi:10.xxxx/xxxxx"`.
 - **Acquisition vs. processing**: raw data goes in `nwbfile.acquisition`. Processed/derived data goes in `nwbfile.processing["module_name"]`.
-- **Processing module names**: use standard names: `"ecephys"`, `"ophys"`, `"behavior"`, `"misc"`. Custom names are allowed but standard names enable tool interoperability.
+- **Processing module names**: use standard names: `"ecephys"`, `"ophys"`, `"icephys"`, `"behavior"`, `"ogen"`, `"misc"`, `"retinotopy"`. Custom names are allowed but standard names enable tool interoperability.
 
 ## Subject
 
-- **Subject must exist**: every NWB file should have a `Subject` object.
-- **`subject_id`**: required for DANDI. Unique identifier for the animal.
+- **Required for DANDI**: `dandi validate` fails on a missing subject, `subject_id`, `sex`, or `species`, on a missing `age` when `date_of_birth` is also missing, and on `/` in `subject_id` or `session_id`.
+- **`subject_id`**: unique identifier for the animal.
 - **`sex`**: one of `"M"`, `"F"`, `"U"` (unknown), `"O"` (other). Single uppercase letter.
 - **`species`**: Latin binomial (e.g., `"Mus musculus"`) or NCBI taxonomy URI (e.g., `"http://purl.obolibrary.org/obo/NCBITaxon_10090"`). Never use common names like "mouse".
 - **`strain`**: the specific strain (e.g., `"C57BL/6J"`). Separate from species.
-- **`age`**: ISO 8601 duration format: `"P90D"` (90 days), `"P12W"` (12 weeks), `"P3M"` (3 months). A reference age can be expressed as a range: `"P90D/P120D"`. Use `"/"` when age is unknown.
+- **`age`**: ISO 8601 duration: `"P90D"` (90 days), `"P12W"` (12 weeks), `"P3M"` (3 months). For an uncertain age give a range, `"P90D/P120D"`; for a lower bound only, `"P90D/"`. DANDI requires `age` or `date_of_birth`.
 - **`date_of_birth`**: preferred over `age` when available (datetime with timezone).
-- **`weight`**: format as `"numeric unit"`, e.g., `"0.025 kg"` or `"25 g"`.
+- **`weight`**: `"<number> <unit>"` with unit one of `kg`, `g`, `mg`, `ug`, `ng`, `pg`, e.g., `"0.025 kg"` or `"25 g"`. `dandi validate` fails on any other form.
 
 ## Time Series
 
@@ -65,25 +64,28 @@ The conversion agent should follow these when generating code.
 
 ## Extracellular Electrophysiology (ecephys)
 
-- **Electrode `location` is required**: fill with your best estimate of the brain region. Use `"unknown"` if truly unknown.
-- **Use Allen Brain Atlas ontology**: for mice, use Allen Brain Atlas terms (full name or abbreviation). Don't invent terms.
+- **Electrode `location` is required**: fill with your best estimate of the brain region. For mice, use the Allen CCF full name or acronym (`VISp`, `CA1`, not `V1` or `mPFC`); Inspector checks electrode and `ImagingPlane` locations against the Allen CCF for mouse subjects. If the region is truly unknown, use `"unknown"` and expect that one Inspector warning.
 - **Anatomical coordinates (`x`, `y`, `z`)**: for precise brain coordinates. For mice, use Allen Institute Common Coordinate Framework v3 (+x = posterior, +y = inferior, +z = right).
 - **Relative coordinates (`rel_x`, `rel_y`, `rel_z`)**: for electrode position on the probe. Used by spike sorters to determine proximity.
 - **Don't duplicate metadata in electrodes table**: don't add `unit`, `gain`, `offset` columns — those belong on `ElectricalSeries` (`channel_conversion`, `offset`).
 - **Spike times must be ascending**: within each unit, spike times must be in ascending order.
 - **Spike times must be positive**: all spike times >= 0. Negative times suggest trial-alignment that should be corrected to session-alignment.
+- **Units `resolution`**: set to `1/sampling_rate` of the acquisition system (e.g., `1/30000`). Inspector flags a missing resolution or one above 0.01 s.
+- **Spike times in seconds**: integer-valued spike times are flagged as sample indices, and `dandi validate` fails on them.
 - **Use `obs_intervals`**: if the recording has gaps where a unit was not observable, set `obs_intervals` on the units table. No spikes should exist outside observed intervals.
 
 ## Optical Physiology (ophys)
 
 - **`image_mask` shape consistency**: the `image_mask` column of `PlaneSegmentation` must have the same shape as `reference_images`.
-- **ImagingPlane required fields**: always set `excitation_lambda`, `indicator`, and `location` on `ImagingPlane`.
+- **ImagingPlane required fields**: always set `excitation_lambda`, `indicator`, and `location` on `ImagingPlane`. `location` is an anatomical region (Allen CCF term for mice); put plane depth in `description`.
+- **Wavelengths in nm**: `excitation_lambda` and `emission_lambda`.
 - **TwoPhotonSeries rate**: must be nonzero. Get from Suite2p `ops["fs"]` or calculate from timestamps.
 - **Store raw imaging data internally**: use chunking + lossless compression (not external file mode).
 
 ## Behavior
 
 - **SpatialSeries dimensionality**: must have 1 (x), 2 (x,y), or 3 (x,y,z) columns. Not more.
+- **SpatialSeries unit**: one of `meters`, `centimeters`, `millimeters`, `micrometers`, `degrees`, `radians`, `pixels`, or `n.a.` (spelled out, not `cm`).
 - **SpatialSeries is only for position**: velocity, acceleration, and other derived signals should use `TimeSeries` or `BehavioralTimeSeries`, not `SpatialSeries`.
 - **CompassDirection units**: must be `"degrees"` or `"radians"`.
 - **CompassDirection data range**: degrees must be in [-360, 360]; radians in [-2pi, 2pi].
@@ -97,12 +99,12 @@ The conversion agent should follow these when generating code.
 
 ## Optogenetics
 
-- **Every `OptogeneticStimulusSite` must have an `OptogeneticSeries`**: don't create stimulus sites without corresponding stimulus data.
+- **Every row of `OptogeneticSitesTable` should be referenced** by at least one row of an `OptogeneticEpochsTable` or `OptogeneticPulsesTable` (ndx-optogenetics).
 
 ## Extensions
 
 - **Use sparingly**: prefer core NWB types and DynamicTable columns before creating extensions.
 - **Check for existing extensions** in the NDX Catalog before creating new ones.
 - **Use `ndx-template`** to scaffold new extensions.
-- **Cache the spec**: always write the extension specification into the NWB file (`cache_spec=True`).
+- **Cache the spec**: PyNWB caches the extension spec by default; don't pass `cache_spec=False`.
 - **Flag for human expert**: the conversion skill should flag when an extension might be needed rather than creating one automatically.

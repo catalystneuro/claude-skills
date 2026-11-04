@@ -6,17 +6,7 @@ description: >
   metadata collection, synchronization analysis, code generation, ontology annotation, testing, DANDI upload,
   Dandiset metadata, and example notebook generation. Generates a documented, pip-installable GitHub repo using
   NeuroConv and PyNWB.
-user_invocable: true
-argument: Optional path to data directory, Google Drive folder URL, or existing conversion repo. Add `--stacked` to deliver the conversion as one pull request per data stream.
-tools:
-  - Bash
-  - Read
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - Task
-  - AskUserQuestion
+argument-hint: "[data path | Google Drive URL | conversion repo] [--stacked]"
 ---
 
 <context>
@@ -233,7 +223,7 @@ generously — they make the conversation faster and reduce ambiguity.
    - No empty strings in descriptions, units, or other text fields
    - All timestamps in seconds, ascending, non-negative, no NaN
    - Use most specific TimeSeries subtype available
-   - Electrode `location` is always required (use "unknown" if needed)
+   - Electrode `location` is always required (Allen CCF terms for mice; "unknown" only if truly unknown)
    - `related_publications` should use DOI format: `"doi:10.xxxx/xxxxx"`
 10. When data is sourced from Google Drive, all generated code (convert_session.py,
     convert_all_sessions.py) must reference the LOCAL mount path, never the Google
