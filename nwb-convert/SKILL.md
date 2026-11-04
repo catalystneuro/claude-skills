@@ -127,10 +127,9 @@ In both modes, Phase 8 writes one review notebook per data stream.
 ## Environment
 
 The skill requires several Python packages for data inspection, conversion, and upload.
-See `make_env.yml` for the full specification. At minimum: `neuroconv`, `pynwb`, `dandi`,
-`nwbinspector`, `spikeinterface`, `h5py`, `remfile`, `pandas`, `pyyaml`. Phase 1
-automatically checks for missing packages and installs them (CLI mode only; NWB GUIDE
-bundles everything).
+Phase 1 Step 0b creates a uv environment in the conversion repo with `neuroconv`, `dandi`,
+`nwbinspector`, and `remfile`, then installs the NeuroConv extra for each file format
+(CLI mode only; NWB GUIDE bundles everything).
 
 When data is hosted on Google Drive, rclone mounts the folder as a local read-only
 filesystem (`rclone nfsmount` on macOS, `rclone mount` with FUSE on Linux). See
