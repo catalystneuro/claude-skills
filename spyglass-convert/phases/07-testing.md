@@ -6,8 +6,8 @@ Inspector and a Spyglass dry-run insertion check.
 **Entry**: All conversion code from Phase 6 is written.
 
 **Baseline**: Follow **nwb-convert Phase 7** for the full testing workflow. All steps
-apply: stub test, NWB file inspection, NWB Inspector run with issue table, full
-conversion run, data integrity validation, and the iterative fix cycle.
+apply: stub test, NWB file inspection against the source data, NWB Inspector run, full
+conversion run, and the fix cycle.
 
 Key difference: skip `dandi validate` (not needed for Spyglass-only projects) and add
 the Spyglass dry-run step (Step 5 below) after NWB Inspector passes.
@@ -95,10 +95,8 @@ with NWBHDF5IO(nwbfile_path, "r") as io:
 nwbinspector /path/to/output/nwb_stub/session.nwb
 ```
 
-Fix all CRITICAL and BEST_PRACTICE_VIOLATION messages. For the full table of
-inspector message codes and their fixes (session_start_time, subject fields,
-data orientation, timestamps, electrode location, etc.), follow
-**nwb-convert Phase 7 Step 4** — the complete table applies unchanged here.
+Fix all CRITICAL and BEST_PRACTICE_VIOLATION messages as in **nwb-convert Phase 7 Step 4**.
+`knowledge/nwb-best-practices.md` in nwb-convert explains the conventions behind most checks.
 
 ### Step 5: Spyglass Dry-Run Insertion Check
 
