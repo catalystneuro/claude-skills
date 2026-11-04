@@ -17,8 +17,7 @@ behavioral events won't align with neural data.
 
 ### Common Synchronization Patterns
 
-The code for each pattern, with real examples, is in the Temporal Alignment section of
-`knowledge/conversion-patterns.md`.
+The code for each pattern, with real examples, is in `knowledge/temporal-alignment.md`.
 
 **Pattern 1: Shared clock (simplest)**
 - All data comes from the same system (e.g., SpikeGLX records both neural and NIDQ)

@@ -21,8 +21,9 @@ stream from Phase 4. Commit Step 9 per branch. See `knowledge/stacked-prs.md`.
 ### Step 1: Scaffold the Repository
 
 The scaffold every conversion repo has is in `knowledge/repo-structure.md`. Solutions to
-conversion-specific problems (custom interfaces, temporal alignment, modality-specific metadata,
-session discovery, unusual layouts), with real examples, are in `knowledge/conversion-patterns.md`.
+conversion-specific problems (custom interfaces, modality-specific metadata, session discovery,
+unusual layouts), with real examples, are in `knowledge/conversion-patterns.md`. The code for the
+Phase 4 sync plan is in `knowledge/temporal-alignment.md`.
 Create the directory structure from Section 1 of `knowledge/repo-structure.md` INSIDE the repo
 created in Phase 1 (`<lab-name>-to-nwb/`):
 
@@ -41,7 +42,7 @@ the interfaces in the interface mapping and any packages the custom interfaces n
 
 Use the template in Section 3 of `knowledge/repo-structure.md`. List every interface from the
 interface mapping in `data_interface_classes`, and put the sync plan from Phase 4 in
-`temporally_align_data_interfaces()` (Temporal Alignment in `knowledge/conversion-patterns.md`).
+`temporally_align_data_interfaces()` (`knowledge/temporal-alignment.md`).
 When interfaces must be built before the converter, or some data is added with PyNWB directly, use a
 converter pattern from `knowledge/conversion-patterns.md`.
 
