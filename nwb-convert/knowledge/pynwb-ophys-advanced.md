@@ -7,10 +7,15 @@ Construction patterns beyond the basics in `nwb-best-practices.md`.
 ```python
 from pynwb.ophys import OpticalChannel
 
+device_model = nwbfile.create_device_model(
+    name="Ultima Investigator",
+    manufacturer="Bruker",
+    description="Two-photon resonant scanning microscope",
+)
 device = nwbfile.create_device(
     name="Microscope",
-    description="Two-photon resonant scanning microscope",
-    manufacturer="Bruker",
+    description="Two-photon microscope, rig 2",
+    model=device_model,
 )
 
 optical_channel = OpticalChannel(
