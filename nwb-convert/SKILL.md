@@ -143,8 +143,8 @@ details, consult the knowledge base files:
 - `knowledge/neuroconv-interfaces.yaml` — all available interfaces and their schemas. Do not use
   an entry marked `deprecated`; it names the replacement. Maintainers refresh this file with
   `tools/update_neuroconv_interfaces.py`.
-- `knowledge/repo-structure.md` — templates for every file in the conversion repo
-- `knowledge/conversion-patterns.md` — choosing a converter pattern, reading MATLAB, text and pickle files
+- `knowledge/repo-structure.md` — the scaffold every conversion repo has: layout, pyproject, converter, session scripts, metadata.yaml, README, CI
+- `knowledge/conversion-patterns.md` — converter patterns, custom interfaces, temporal alignment, ophys and per-subject metadata, session discovery, and reading MATLAB, text and pickle files, with real examples from conversion repos
 - `knowledge/nwb-best-practices.md` — NWB conventions with the NWB Inspector check for each, and what `nwbinspector --config dandi` and `dandi validate` check
 - `knowledge/external-resources.md` — linking terms to ontologies and registries with HERD: lookup endpoints and a tested helper
 - `knowledge/notebook-recipes.md`: shared guidance for the Phase 8 and Phase 11 notebooks: pynapple loading, visualization recipes, cell style

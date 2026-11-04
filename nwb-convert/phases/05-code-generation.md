@@ -20,9 +20,11 @@ stream from Phase 4. Commit Step 9 per branch. See `knowledge/stacked-prs.md`.
 
 ### Step 1: Scaffold the Repository
 
-All templates for the files below are in `knowledge/repo-structure.md`. Create the directory
-structure from its Section 1 INSIDE the repo created in Phase 1
-(`<lab-name>-to-nwb/`):
+The scaffold every conversion repo has is in `knowledge/repo-structure.md`. Solutions to
+conversion-specific problems (custom interfaces, temporal alignment, modality-specific metadata,
+session discovery, unusual layouts), with real examples, are in `knowledge/conversion-patterns.md`.
+Create the directory structure from Section 1 of `knowledge/repo-structure.md` INSIDE the repo
+created in Phase 1 (`<lab-name>-to-nwb/`):
 
 - `pyproject.toml`, `README.md`, `LICENSE` (MIT) and `.pre-commit-config.yaml` at the repo root
   (`.gitignore` exists from Phase 1)
@@ -39,9 +41,9 @@ the interfaces in the interface mapping and any packages the custom interfaces n
 
 Use the template in Section 3 of `knowledge/repo-structure.md`. List every interface from the
 interface mapping in `data_interface_classes`, and put the sync plan from Phase 4 in
-`temporally_align_data_interfaces()` (Section 8). When interfaces must be built before the
-converter, or some data is added with PyNWB directly, use a pattern from
-`knowledge/conversion-patterns.md`.
+`temporally_align_data_interfaces()` (Temporal Alignment in `knowledge/conversion-patterns.md`).
+When interfaces must be built before the converter, or some data is added with PyNWB directly, use a
+converter pattern from `knowledge/conversion-patterns.md`.
 
 ### Step 3a: Reuse NeuroConv Interfaces Before Writing Your Own
 
@@ -61,9 +63,9 @@ first option that works:
 
 ### Step 4: Write Custom DataInterface Classes
 
-For each data stream that needs custom code, start from the template in Section 6 of
-`knowledge/repo-structure.md`. Follow `knowledge/nwb-best-practices.md` in every custom
-interface.
+For each data stream that needs custom code, start from the template and examples in the Custom
+DataInterface section of `knowledge/conversion-patterns.md`. Follow `knowledge/nwb-best-practices.md`
+in every custom interface.
 
 #### Custom Interface Guidelines
 
@@ -135,7 +137,7 @@ subtype exists.
 
 If you are unsure whether a microscope is one-photon or two-photon, ask the user. Most imaging
 interfaces write a `TwoPhotonSeries` unless the `photon_series_type` conversion option says
-otherwise (Section 7 of `knowledge/repo-structure.md`).
+otherwise (Ophys metadata in `knowledge/conversion-patterns.md`).
 
 When a dataset mixes behavioral and stimulus columns (common in VR experiments), separate
 them. What the animal did (position, running speed, licks, eye and pupil tracking, pose) goes in
@@ -164,16 +166,18 @@ the per-session metadata (`session_id`, `subject_id`, timezone-aware `session_st
 ### Step 6: Write convert_all_sessions.py
 
 Use the template in Section 5 of `knowledge/repo-structure.md` and write
-`get_session_to_nwb_kwargs_per_session` for this dataset's session layout.
+`get_session_to_nwb_kwargs_per_session` for this dataset's session layout (Session Discovery in
+`knowledge/conversion-patterns.md`).
 
 ### Step 7: Write metadata.yaml
 
-Write the metadata collected in Phase 3 in the format of Section 7 of
-`knowledge/repo-structure.md`. For more than one subject, add the per-subject file described there.
+Write the metadata collected in Phase 3 in the format of Section 6 of
+`knowledge/repo-structure.md`. Write ophys devices and imaging planes, and a per-subject file for more
+than one subject, as described in Case-Specific Metadata in `knowledge/conversion-patterns.md`.
 
 ### Step 8: Write README.md, LICENSE, and Supporting Files
 
-Use Sections 9 and 10 of `knowledge/repo-structure.md`: the README, the MIT `LICENSE`,
+Use Sections 7 and 8 of `knowledge/repo-structure.md`: the README, the MIT `LICENSE`,
 `.pre-commit-config.yaml`, and the CI workflows if the user wants PyPI publishing.
 
 ### Step 9: Commit and Push
