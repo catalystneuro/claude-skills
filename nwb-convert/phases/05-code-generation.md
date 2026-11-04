@@ -251,7 +251,7 @@ subtype exists. See `knowledge/nwb-best-practices.md` for the full set of conven
 - `knowledge/pynwb-icephys.md` — intracellular electrophysiology
 - `knowledge/ndx-optogenetics.md` — ndx-optogenetics extension (REQUIRED for optogenetics)
 - `knowledge/pynwb-ophys-advanced.md` — advanced optical physiology (ROIs, segmentation, motion correction)
-- `knowledge/pynwb-behavior.md` — behavior container types (PupilTracking, EyeTracking, etc.)
+- `knowledge/pynwb-behavior.md` — behavior container types (PupilTracking, EyeTracking, etc.) and EventsTable
 - `knowledge/pynwb-images.md` — image data and external video files
 - `knowledge/pynwb-advanced-io.md` — compression, chunking, iterative write for large data
 - `knowledge/ndx-fiber-photometry.md` — ndx-fiber-photometry extension (REQUIRED for fiber photometry)

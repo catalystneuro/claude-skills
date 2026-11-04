@@ -1412,25 +1412,3 @@ jobs:
 12. Test with `stub_test=True`
 13. Validate with `nwbinspector`
 14. Write the README with installation and usage instructions
-
----
-
-## Appendix C: NWB Containers Quick Reference
-
-When writing custom interfaces, you need to know which PyNWB types to use:
-
-| Data type | PyNWB class | Where to add it |
-|-----------|-------------|-----------------|
-| Raw electrophysiology | `ElectricalSeries` | `nwbfile.add_acquisition()` |
-| LFP | `LFP` containing `ElectricalSeries` | `ecephys` processing module |
-| Spike times | `Units` | `nwbfile.units` |
-| Position | `Position` containing `SpatialSeries` | `behavior` processing module |
-| Behavioral time series | `TimeSeries` | `behavior` processing module |
-| Behavioral events | `TimeIntervals` | `behavior` processing module or `nwbfile.add_stimulus()` |
-| Trials | built-in | `nwbfile.add_trial()` with `nwbfile.add_trial_column()` |
-| Epochs | built-in | `nwbfile.add_epoch()` with `nwbfile.add_epoch_column()` |
-| Calcium imaging | `OnePhotonSeries` or `TwoPhotonSeries` | `nwbfile.add_acquisition()` |
-| ROI segmentation | `PlaneSegmentation` in `ImageSegmentation` | `ophys` processing module |
-| Fluorescence traces | `RoiResponseSeries` in `Fluorescence` or `DfOverF` | `ophys` processing module |
-| Stimulus events | `TimeIntervals` | `nwbfile.add_stimulus()` |
-| Sleep states | `TimeIntervals` | custom processing module (e.g., `sleep`) |

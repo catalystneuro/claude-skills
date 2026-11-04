@@ -8,12 +8,13 @@ All behavior container types and when to use each.
 |-----------|-----------|-----------|---------|
 | Spatial position (x, y, z) | `Position` | `SpatialSeries` | Running on linear track |
 | Continuous signals | `BehavioralTimeSeries` | `TimeSeries` | Running speed, lick rate |
-| Irregular events | `BehavioralEvents` | `TimeSeries` | Lever presses at variable times |
+| Discrete events | `EventsTable` | (one row per event) | Lever presses, licks, rewards |
 | Pupil diameter | `PupilTracking` | `TimeSeries` | Eye tracking pupil size |
 | Gaze position | `EyeTracking` | `SpatialSeries` | Eye tracking x,y position |
 | Head direction | `CompassDirection` | `SpatialSeries` | Angular heading |
 
-All containers go in `processing["behavior"]`.
+All containers go in `processing["behavior"]`, except `EventsTable`, which goes in `nwbfile.events` via
+`nwbfile.add_events_table()`.
 
 ## Position
 
@@ -61,23 +62,25 @@ bts.create_timeseries(
 behavior.add(bts)
 ```
 
-## BehavioralEvents
+## EventsTable
 
-For **irregularly timed** behavioral events:
+For discrete behavioral events (lever presses, licks, rewards), one table per event type:
 
 ```python
-from pynwb.behavior import BehavioralEvents
+from pynwb.event import EventsTable
 
-be = BehavioralEvents()
-be.create_timeseries(
+lever_presses = EventsTable(
     name="lever_presses",
-    data=np.ones(n_presses),      # amplitude/value at each event
-    timestamps=press_times,        # irregular timestamps
-    unit="n.a.",
     description="Times of lever press events",
+    source_description="Lever TTL on DAQ channel 2",   # optional
 )
-behavior.add(be)
+for press_time in press_times:
+    lever_presses.add_event(timestamp=float(press_time))   # optional: duration=, annotation=, extra columns
+nwbfile.add_events_table(lever_presses)
 ```
+
+Prefer a NeuroConv events interface (see the `events` category of `neuroconv-interfaces.yaml`) when one reads the
+source format.
 
 ## PupilTracking
 
