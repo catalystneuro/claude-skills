@@ -244,7 +244,8 @@ class <ConversionName><Modality>Interface(BaseDataInterface):
 - The `__init__` parameters are the keys of this interface's `source_data` entry. Pass all of them to
   `super().__init__()`, which stores them in `self.source_data`. Annotate paths with `pydantic`'s `FilePath` or
   `DirectoryPath` so they are validated.
-- Keep `__init__` light: store paths and read data in `add_to_nwbfile`.
+- Keep `__init__` light: store paths and read data in `add_to_nwbfile`. Readers for MATLAB, text, and pickle
+  files are in `knowledge/reading-source-files.md`.
 - Extra keyword arguments of `add_to_nwbfile` are the keys of this interface's `conversion_options` entry.
   Accept `stub_test` to support stub runs.
 - An interface whose timestamps must be aligned subclasses `BaseTemporalAlignmentInterface` instead (`knowledge/temporal-alignment.md`).
@@ -485,66 +486,3 @@ def get_session_to_nwb_kwargs_per_session(
 
     return session_to_nwb_kwargs_per_session
 ```
-
----
-
-## 5. Reading Source Files in Custom Interfaces
-
-### Reading MATLAB .mat files
-
-```python
-# For older MATLAB files (v5/v6)
-from scipy.io import loadmat
-mat = loadmat(file_path)
-data = mat["variable_name"]
-
-# More robust alternative to scipy.io.loadmat (handles more MATLAB types)
-# pip install pymatreader
-from pymatreader import read_mat
-mat = read_mat(file_path)
-data = mat["variable_name"]
-
-# For MATLAB tables and strings that scipy and pymatreader cannot read
-# pip install mat-io
-from matio import load_from_mat
-mat = load_from_mat(file_path)
-data = mat["variable_name"]
-
-# For MATLAB v7.3+ (HDF5-based) — use when the above fail
-import h5py
-with h5py.File(file_path, "r") as f:
-    data = f["variable_name"][:]
-
-# For MATLAB v7.3 with complex nested structures
-import hdf5storage
-mat = hdf5storage.loadmat(file_path)
-```
-
-### Reading text/CSV behavior files
-
-```python
-import pandas as pd
-# Tab-separated with no header
-df = pd.read_csv(file_path, sep="\t", header=None,
-                 names=["timestamp", "position", "extra1", "extra2"])
-
-# Or numpy for simple numeric files
-import numpy as np
-data = np.loadtxt(file_path)
-```
-
-### Reading pickled DataFrames
-
-```python
-import pickle
-with open(file_path, "rb") as f:
-    data = pickle.load(f)
-df = data["VR_Data"]  # or whatever key
-```
-
-**Pickle compatibility**: Pickles saved with older pandas versions may fail to load with
-pandas >= 2.0 because `pandas.core.indexes.numeric` was removed. If you encounter
-`ModuleNotFoundError: No module named 'pandas.core.indexes.numeric'`:
-1. First try loading normally
-2. If it fails, the user may need `pandas < 2.0` or to re-save the pickle with a newer version
-3. Flag this to the user as a data compatibility issue — it is NOT a bug in the conversion code
