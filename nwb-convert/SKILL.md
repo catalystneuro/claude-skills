@@ -4,7 +4,7 @@ description: >
   Lead a conversation to convert neurophysiology data to NWB format and publish on DANDI.
   Guides the user (typically a lab experimentalist) through experiment discovery, data inspection,
   metadata collection, synchronization analysis, code generation, ontology annotation, testing, DANDI upload,
-  Dandiset metadata, and example notebook generation. Generates a documented, pip-installable GitHub repo using
+  Dandiset metadata, and example notebook generation. Generates a documented, pip-installable git repo using
   NeuroConv and PyNWB.
 argument-hint: "[data path | Google Drive URL | conversion repo] [--stacked]"
 ---
@@ -145,28 +145,10 @@ details, consult the knowledge base files:
   `tools/update_neuroconv_interfaces.py`.
 - `knowledge/repo-structure.md` — templates for every file in the conversion repo
 - `knowledge/conversion-patterns.md` — choosing a converter pattern, reading MATLAB, text and pickle files
-- `knowledge/nwb-best-practices.md` — NWB conventions and common mistakes (from NWB Inspector)
+- `knowledge/nwb-best-practices.md` — NWB conventions with the NWB Inspector check for each, and what `nwbinspector --config dandi` and `dandi validate` check
 - `knowledge/external-resources.md` — linking terms to ontologies and registries with HERD: lookup endpoints and a tested helper
+- `knowledge/notebook-recipes.md`: shared guidance for the Phase 8 and Phase 11 notebooks: pynapple loading, visualization recipes, cell style
 - `knowledge/value-meanings.md` — describing the values of categorical columns with a `MeaningsTable` and annotating them with HED: schema search, validation, and a tested helper
-
-### Conversion Registry (`nwb-conversions` GitHub org)
-
-The `nwb-conversions` GitHub org is a living registry of all conversion repos created by
-this skill. Each repo contains a `conversion_manifest.yaml` describing what was built.
-A weekly GitHub Action aggregates all manifests into `nwb-conversions/.github/registry.yaml`.
-
-**How to use the registry:**
-- **Phase 1**: Fetch `registry.yaml` to find similar prior conversions by species, modality, or file format
-- **Phase 2**: Cross-reference `format_hints` to accelerate file-to-interface mapping
-- **Phase 5**: Search for reusable custom interfaces before writing from scratch
-- **Phase 7**: Check `lessons` for known pitfalls with the same formats/tools
-- **Phase 8**: Write `conversion_manifest.yaml` to feed back into the registry
-
-**Authentication:** The skill calls the nwb-conversions API
-(`https://nwb-conversions-api.ben-dichter.workers.dev`) to create private repos in the
-`nwb-conversions` org and fetch the registry. The user does not need a GitHub account —
-the API handles authentication server-side. If the API is unreachable, the skill works
-locally without registry integration.
 
 ## Presenting Choices to the User
 
@@ -213,30 +195,21 @@ generously — they make the conversation faster and reduce ambiguity.
 3. ALWAYS use NeuroConv interfaces when available rather than writing raw PyNWB.
 4. ALWAYS include `stub_test` support in conversion scripts.
 5. If an NWB extension is needed, FLAG IT — don't try to create one without expert help.
-6. Session start times MUST have timezone information.
-7. Subject species should use binomial nomenclature (e.g., "Mus musculus" not "mouse").
-8. Keep the user informed of what you're doing and why.
-9. ALWAYS follow NWB best practices (see `knowledge/nwb-best-practices.md`):
-   - Time-first data orientation (transpose if needed)
-   - Use `rate` + `starting_time` for regularly sampled data
-   - Use `conversion` parameter instead of transforming data values
-   - No empty strings in descriptions, units, or other text fields
-   - All timestamps in seconds, ascending, non-negative, no NaN
-   - Use most specific TimeSeries subtype available
-   - Electrode `location` is always required (Allen CCF terms for mice; "unknown" only if truly unknown)
-   - `related_publications` should use DOI format: `"doi:10.xxxx/xxxxx"`
-10. When data is sourced from Google Drive, all generated code (convert_session.py,
+6. ALWAYS follow `knowledge/nwb-best-practices.md` for metadata formats and data conventions
+   (timezone-aware session start time, Subject fields, time-first data, and the rest).
+7. Keep the user informed of what you're doing and why.
+8. When data is sourced from Google Drive, all generated code (convert_session.py,
     convert_all_sessions.py) must reference the LOCAL mount path, never the Google
     Drive URL. The rclone mount makes remote files appear as local files.
-11. PREFER raw acquisition data over lab-processed derivatives. If you see trialized
+9. PREFER raw acquisition data over lab-processed derivatives. If you see trialized
     structs, pre-computed averages, or custom post-processing artifacts, ask if the
     original acquisition files are available. Accept processed data gracefully when
     raw data is truly unavailable.
-12. NEVER write an ontology or registry identifier (NCBITaxon, MBA, UBERON, RRID, ROR, ORCID)
+10. NEVER write an ontology or registry identifier (NCBITaxon, MBA, UBERON, RRID, ROR, ORCID)
     from memory. Look each one up in its registry and check that the returned record matches
     what the lab meant, using its metadata and not only its name (a ROR record's country, an
     ORCID record's affiliation). Leave a value unannotated rather than guess.
-13. NEVER write a HED tag from memory, and NEVER invent what a coded value means. Find tags by
+11. NEVER write a HED tag from memory, and NEVER invent what a coded value means. Find tags by
     searching the HED schema and validate every string. Take the meaning of a value from the
     lab. Leave a value without HED, or a column without meanings, rather than guess.
 </instructions>

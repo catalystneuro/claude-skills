@@ -230,11 +230,7 @@ def session_to_nwb(
     # Subject metadata — subject_id is required for DANDI
     metadata["Subject"]["subject_id"] = subject_id
     # Load per-subject metadata from file if available (Section 7)
-    # See knowledge/nwb-best-practices.md for required formats:
-    #   species: Latin binomial (e.g., "Mus musculus")
-    #   sex: one of "M", "F", "U", "O"
-    #   age: ISO 8601 duration (e.g., "P90D")
-    #   weight: "numeric unit" (e.g., "0.025 kg")
+    # Field formats: knowledge/nwb-best-practices.md (Subject)
 
     # Run conversion
     converter.run_conversion(

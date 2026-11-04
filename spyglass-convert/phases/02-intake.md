@@ -7,8 +7,8 @@ organization, with attention to what Spyglass needs to ingest.
 
 **Baseline**: Follow **nwb-convert Phase 1** for the full intake workflow. All steps apply:
 
-- **Step 0a** (conversion repo + registry) — create the repo, consult the nwb-conversions
-  registry for similar prior conversions, seed `.gitignore`
+- **Step 0a** (conversion repo) — create the local repo, optionally add a GitHub remote,
+  seed `.gitignore`
 - **Step 0b** (uv environment) — set up the venv here; activate it throughout all phases
 - **Step 0c** (Google Drive) — if data is on Drive, mount via rclone before inspection
 - **Opening questions** — ask about experiment, recordings, behavior, existing code

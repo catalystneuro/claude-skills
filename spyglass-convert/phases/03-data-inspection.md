@@ -7,7 +7,6 @@ map to NeuroConv interfaces — with a Spyglass compatibility lens.
 
 **Baseline**: Follow **nwb-convert Phase 2** for the full inspection workflow. All steps apply:
 
-- **Registry cross-reference** — match filenames against `format_hints` before probing files
 - **File inspection** — SpikeGLX/OpenEphys via spikeinterface, Phy via spikeinterface,
   calcium imaging via roiextractors, behavior files via pymatreader/pandas/h5py
 - **NeuroConv interface testing** — instantiate each interface and call `get_metadata()`

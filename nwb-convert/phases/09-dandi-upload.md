@@ -84,10 +84,9 @@ nwbinspector /path/to/nwb/output/ --config dandi
 Fix every ERROR, PYNWB_VALIDATION, and CRITICAL message before proceeding; `dandi upload` refuses
 files that have them.
 
-`dandi validate` only works inside a Dandiset folder (one with `dandiset.yaml`); on a plain output
-folder it fails with `DANDI.NO_DANDISET_FOUND`. Inside the Dandiset it also checks the file and
-folder names that `dandi organize` produces. Step 5 runs it after `dandi organize`, and
-`automatic_dandi_upload` in Step 4 validates each file before uploading it.
+`dandi validate` needs a Dandiset folder, so it runs after `dandi organize` in Step 4, and
+`automatic_dandi_upload` in Step 3 validates each file before uploading it. What each tool checks is
+in `knowledge/nwb-best-practices.md` ("Validation").
 
 ### Step 3: Upload Using NeuroConv Helper (Recommended)
 
@@ -145,77 +144,6 @@ After upload completes:
 >
 > Next we'll fill in the Dandiset metadata (authors, funding, the associated paper,
 > brain regions, license), which DANDI requires before the Dandiset can be published.
-
-### Step 6: Write Conversion Manifest
-
-After the upload is complete, write a `conversion_manifest.yaml` to the
-conversion repo. This manifest captures structured metadata about what was built, enabling
-the weekly registry scan to aggregate it for future conversions.
-
-Build the manifest from the conversion artifacts you've created throughout the engagement:
-
-```yaml
-# conversion_manifest.yaml (in repo root)
-schema_version: 1
-lab: "<Lab Name>"
-conversions:
-  - name: "<conversion_name>"
-    status: completed
-    species: "<binomial, e.g., Mus musculus>"
-    modalities: [ecephys, behavior]  # from Phase 1
-    neuroconv_interfaces:
-      - name: SpikeGLXRecordingInterface
-        file_patterns: ["*.ap.bin", "*.ap.meta"]
-      - name: SpikeGLXLFPInterface
-        file_patterns: ["*.lf.bin", "*.lf.meta"]
-      - name: PhySortingInterface
-        file_patterns: ["spike_times.npy", "cluster_group.tsv"]
-    custom_interfaces:
-      - name: "<CustomInterfaceName>"
-        file: "src/<package>/<conversion>/interfaces/<filename>.py"
-        handles: "<brief description of what file format it reads>"
-        creates: [Position, BehavioralEvents]  # NWB types created
-        file_patterns: ["events.csv", "trials.csv"]
-    extensions: []  # any ndx-* extensions used
-    sync_approach: "<ttl_based|shared_clock|software_sync|none>"
-    dandi_id: "<6-digit dandiset ID>"
-    pattern: "<standard_nwbconverter|converter_pipe|custom>"
-    lessons:
-      - "<any gotchas, quirks, or tips discovered during this conversion>"
-    date_completed: "<YYYY-MM-DD>"
-```
-
-**How to populate each field:**
-- `name`: The conversion subdirectory name (e.g., `experiment_2026`)
-- `modalities`: Collect from the Data Streams table in `conversion_notes.md`
-- `neuroconv_interfaces`: From the Interface Mapping table in `conversion_notes.md`.
-  Each entry has `name` (the interface class) and `file_patterns` (globs that this
-  interface handles, from Phase 2 inspection).
-- `custom_interfaces`: From any custom DataInterface classes you wrote in Phase 5.
-  Include `file_patterns` for the files each custom interface reads.
-- `extensions`: Any `ndx-*` packages used (e.g., `ndx-fiber-photometry`, `ndx-pose`)
-- `sync_approach`: From Phase 4 sync plan
-- `dandi_id`: The Dandiset ID from this phase
-- `lessons`: Anything surprising, non-obvious, or worth knowing for future similar conversions
-- `date_completed`: Today's date
-
-**Commit and push the manifest** (remote was configured in Phase 1 via the API):
-```bash
-git add conversion_manifest.yaml
-git commit -m "Add conversion manifest for registry
-
-Dandiset: <dandi_id>
-Modalities: <modalities>
-Interfaces: <N> NeuroConv + <N> custom"
-if git remote get-url origin &>/dev/null; then git push; fi
-```
-
-If the repo is in the `nwb-conversions` org (the normal case when the API is reachable),
-the weekly registry scan will find it automatically — no further action needed.
-
-If working locally (API was unreachable), inform the user:
-> The conversion manifest has been saved locally. To include this conversion in the
-> registry for future reference, contact CatalystNeuro for assistance.
 
 ### Common Issues
 
