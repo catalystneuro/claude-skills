@@ -16,7 +16,7 @@ at least one combined analysis (e.g., place fields, PSTHs, or trial-aligned time
 
 Before writing any code, collect the information needed to plan the notebook:
 
-1. **Dandiset ID and version** (from Phase 8)
+1. **Dandiset ID and version** (from Phase 9)
 2. **Session inventory**: List all NWB files. Identify which sessions have behavioral data,
    which are ecephys-only, etc.
 3. **Data streams available**: Units (spike times), Position/SpatialSeries, LFP,
@@ -41,10 +41,12 @@ template, including only sections relevant to the dataset:
 ```
 1. Title & Introduction
    - Dataset description, link to Dandiset, link to paper (if any)
+   - Link to the session in Neurosift:
+     `https://neurosift.app/nwb?dandisetId=<dandiset_id>&dandisetVersion=draft&path=<asset_path>`
    - Brief experimental summary
 
 2. Setup
-   - Install/import dependencies
+   - Import dependencies (the install cell is generated in Step 5)
    - Connect to DANDI and list available sessions
 
 3. Load a Single Session
@@ -83,40 +85,45 @@ Present the plan to the user:
 
 ### Step 2: Set Up the Notebook Directory
 
-Create the notebook in a local working directory following the `dandi/example-notebooks`
-conventions:
+Fork and clone `dandi/example-notebooks` (default branch `master`), create a branch, and
+create the notebook directory inside the clone. The layout follows the repo's
+[README](https://github.com/dandi/example-notebooks#submission-instructions):
+
+```bash
+gh repo fork dandi/example-notebooks --clone
+cd example-notebooks
+git checkout -b add-<dandiset_id>
+mkdir -p <dandiset_id>/<lab_name>/<mnemonic>
+```
 
 ```
-<working_dir>/
+example-notebooks/
   <dandiset_id>/
-    nwb-convert-skill/
-      environment.yml
-      README.md
-      <dandiset_id>_demo.ipynb
+    <lab_name>/              # org or lab name, e.g. DombeckLab
+      <mnemonic>/            # short name for the paper or analysis, e.g. smith2025
+        requirements.in
+        README.md
+        <dandiset_id>_demo.ipynb
 ```
 
-**environment.yml** — minimal conda environment:
-```yaml
-name: <dandiset_id>_demo
-channels:
-    - conda-forge
-dependencies:
-    - python==3.11
-    - pip
-    - pip:
-      - dandi
-      - jupyter
-      - matplotlib
-      - pynwb
-      - remfile
-      - pynapple
-      - h5py
+**requirements.in**: the notebook's direct imports, one per line. Do not list transitive
+dependencies or a full freeze; the repo's tooling compiles the pinned set from this file.
+
+```
+dandi
+h5py
+matplotlib
+pynapple
+pynwb
+remfile
 ```
 
-Add additional pip dependencies only if the notebook actually uses them (e.g., `scipy`
-for signal processing, `numpy` for array operations). Keep it minimal.
+Add a package only if the notebook imports it (e.g., `numpy`, `scipy`, an `ndx-*`
+extension). If the notebook needs a version range, write it as a bound
+(e.g., `matplotlib<3.11`).
 
-**README.md**:
+**README.md**: explain the goal of the notebook, link the Dandiset and any publication,
+and describe what each notebook shows.
 ```markdown
 # <Dandiset Title>
 
@@ -125,20 +132,11 @@ This example notebook demonstrates how to access and visualize the dataset publi
 
 <Brief description of the data: species, brain regions, recording methods, behavioral task>
 
-## Installing the dependencies
+## Notebooks
 
-```bash
-git clone https://github.com/dandi/example-notebooks
-cd example-notebooks/<dandiset_id>/CatalystNeuro
-conda env create --file environment.yml
-conda activate <dandiset_id>_demo
-```
+### `<dandiset_id>_demo.ipynb`
 
-## Running the notebook
-
-```bash
-jupyter notebook <dandiset_id>_demo.ipynb
-```
+<What the notebook streams and what each section shows>
 ```
 
 ### Step 3: Write the Notebook
@@ -179,35 +177,28 @@ import pynapple as nap
 
 nap.nap_config.suppress_conversion_warnings = True
 nwb = nap.NWBFile(nwbfile)
+print(nwb)  # lists every key with its pynapple type
 
-# Access data
-spikes = nwb["units"]          # TsGroup
-position = nwb["position"]    # Tsd or TsdFrame
-epochs = nwb["epochs"]        # dict of IntervalSet (if epochs exist)
+# Keys are the names of the NWB objects. A TimeSeries is keyed by its own name
+# (e.g. the SpatialSeries name), not by its container (e.g. Position).
+spikes = nwb["units"]                      # TsGroup
+position = nwb["<SpatialSeries name>"]     # TsdFrame
+epochs = nwb["epochs"]                     # IntervalSet; extra columns become metadata
+trials = nwb["trials"]                     # IntervalSet
 ```
 
-If `nap.NWBFile` doesn't automatically find certain data streams, construct pynapple
-objects manually:
+Select intervals by a metadata column with a boolean mask, e.g.
+`epochs[epochs["<label column>"] == "<label>"]`.
+
+If `nap.NWBFile` doesn't find a data stream, construct the pynapple object manually:
 
 ```python
-# Manual spike extraction
-spike_times = {i: nwbfile.units['spike_times'][i] for i in range(len(nwbfile.units))}
-spikes = nap.TsGroup(spike_times)
-
-# Manual position extraction
-pos_data = nwbfile.processing['behavior']['position']['spatial_series']
+spatial_series = nwbfile.processing["behavior"]["<Position name>"]["<SpatialSeries name>"]
 position = nap.TsdFrame(
-    t=pos_data.timestamps[:],
-    d=pos_data.data[:],
+    t=spatial_series.get_timestamps(),
+    d=spatial_series.data[:],
     columns=["x", "y"],
 )
-
-# Epochs from intervals table
-epochs_table = nwbfile.intervals['epochs']
-for i in range(len(epochs_table)):
-    start = epochs_table['start_time'][i]
-    stop = epochs_table['stop_time'][i]
-    label = epochs_table['session_type'][i]  # or whatever column labels the condition
 ```
 
 #### Visualization Guidelines
@@ -226,14 +217,12 @@ for i in range(len(epochs_table)):
 **Position trajectory colored by epoch:**
 ```python
 fig, ax = plt.subplots(figsize=(8, 8))
-colors = {"ES": "tab:blue", "BL": "tab:green", "MC": "tab:orange"}
-for epoch_name, epoch_interval in epoch_dict.items():
-    pos_epoch = position.restrict(epoch_interval)
-    ax.plot(pos_epoch[:, 0], pos_epoch[:, 1], '.', markersize=0.5,
-            color=colors.get(epoch_name, "gray"), label=epoch_name, alpha=0.5)
-ax.legend()
-ax.set_xlabel("X (pixels)")
-ax.set_ylabel("Y (pixels)")
+for label in np.unique(epochs["<label column>"]):
+    position_in_label = position.restrict(epochs[epochs["<label column>"] == label])
+    ax.plot(position_in_label[:, 0], position_in_label[:, 1], ".", markersize=0.5, alpha=0.5, label=label)
+ax.legend(markerscale=10)
+ax.set_xlabel("x (<SpatialSeries unit>)")
+ax.set_ylabel("y (<SpatialSeries unit>)")
 ax.set_title("Animal trajectory")
 ax.set_aspect("equal")
 ```
@@ -250,38 +239,46 @@ ax.set_title("Spike raster")
 
 **2D place field (firing rate map):**
 ```python
-tc, binsxy = nap.compute_2d_tuning_curves(
-    group=spikes, features=position, nb_bins=30, ep=epoch_interval
+# xarray DataArray with dims (unit, x, y); pass epochs= to restrict to an IntervalSet
+tuning_curves = nap.compute_tuning_curves(
+    data=spikes, features=position, bins=30, feature_names=["x", "y"]
 )
 fig, axes = plt.subplots(2, 4, figsize=(16, 8))
-for i, ax in enumerate(axes.flat):
-    if i < len(tc):
-        ax.imshow(tc[i].T, origin="lower", aspect="auto", cmap="hot")
-        ax.set_title(f"Unit {i}")
+for ax, unit_id in zip(axes.flat, tuning_curves.coords["unit"].values):
+    tuning_curves.sel(unit=unit_id).plot(ax=ax, x="x", y="y", cmap="hot", add_colorbar=False)
+    ax.set_title(f"Unit {unit_id}")
 plt.suptitle("Place fields")
 fig.tight_layout()
 ```
 
-**PSTH (perievent time histogram):**
+**Peri-event raster and PSTH:**
 ```python
-# Align spikes to event times
-peth = nap.compute_perievent(spikes, event_times, minmax=(-0.5, 1.0))
+event_times = nap.Ts(t=trials.start)  # or any event timestamps
+peri_event = nap.compute_perievent(data=spikes, events=event_times, window=(-0.5, 1.0))
+unit_peri_event = peri_event[unit_id]  # TsGroup with one entry per event
 
-fig, ax = plt.subplots(figsize=(8, 4))
-for trial_spikes in peth[unit_id]:
-    ax.plot(trial_spikes.times(), np.full(len(trial_spikes), trial_idx), "|k", markersize=2)
-ax.set_xlabel("Time from event (s)")
-ax.set_ylabel("Trial")
-ax.set_title(f"PSTH — Unit {unit_id}")
+bin_size = 0.02
+firing_rate = unit_peri_event.count(bin_size).mean(axis=1) / bin_size
+raster = unit_peri_event.to_tsd()  # times relative to the event; values are the event index
+
+fig, (ax_raster, ax_rate) = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
+ax_raster.plot(raster.t, raster.d, "|k", markersize=2)
+ax_raster.set_ylabel("Event")
+ax_rate.plot(firing_rate.t, firing_rate.d)
+ax_rate.set_xlabel("Time from event (s)")
+ax_rate.set_ylabel("Firing rate (Hz)")
+ax_raster.set_title(f"Peri-event raster and PSTH, unit {unit_id}")
 ```
 
 **Trial-aligned continuous data:**
 ```python
-# Align continuous signal to trial onsets
-for i, ep in enumerate(trial_epochs):
-    segment = signal.restrict(ep)
-    t_aligned = segment.times() - ep["start"].values[0]
-    ax.plot(t_aligned, segment.values, alpha=0.3, color="gray")
+# TsdFrame with one column per trial; time is relative to trial start
+aligned = nap.compute_perievent(data=signal, events=nap.Ts(t=trials.start), window=(-0.5, 1.0))
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.plot(aligned.t, aligned.d, color="gray", alpha=0.3)
+ax.plot(aligned.t, np.nanmean(aligned.d, axis=1), color="k")
+ax.set_xlabel("Time from trial start (s)")
+ax.set_title("Trial-aligned signal")
 ```
 
 #### Notebook Cell Style
@@ -299,24 +296,32 @@ for i, ep in enumerate(trial_epochs):
 
 ### Step 4: Test the Notebook
 
-Run the notebook end-to-end using `jupyter execute`:
+The repository's CI runs each new notebook on Python 3.13 in a fresh environment that
+contains only the pinned packages from the install cell, with no display. Test the same
+way: a new Python 3.13 environment outside the clone with only `requirements.in` and
+Jupyter installed. `JUPYTER_PREFER_ENV_PATH=1` makes Jupyter use this environment's
+kernel even when the user has their own `python3` kernel registered.
 
 ```bash
-cd <working_dir>/<dandiset_id>/CatalystNeuro
-jupyter execute <dandiset_id>_demo.ipynb --timeout=600
+uv venv --python 3.13 notebook-env
+source notebook-env/bin/activate
+uv pip install -r example-notebooks/<dandiset_id>/<lab_name>/<mnemonic>/requirements.in jupyter
+export JUPYTER_PREFER_ENV_PATH=1
+cd example-notebooks/<dandiset_id>/<lab_name>/<mnemonic>
+jupyter execute --inplace --timeout=600 <dandiset_id>_demo.ipynb
 ```
 
-Or test with `nbconvert`:
-
-```bash
-jupyter nbconvert --to notebook --execute <dandiset_id>_demo.ipynb --output executed.ipynb
-```
+`--inplace` saves the outputs into the notebook, so you can read them and they render on
+GitHub after submission. The lock script in Step 5 keeps them.
 
 Verify:
 1. All cells execute without errors
-2. All plots render correctly (read the output notebook images)
+2. All plots render correctly (read the images in the notebook's outputs)
 3. Streaming access works (no local file dependencies)
 4. The notebook completes in a reasonable time (< 5 minutes for streaming)
+5. The notebook runs headlessly: no `%matplotlib widget` or other interactive backend,
+   no plotly `fig.show()` without `pio.renderers.default = "iframe"`, no `input()`.
+   See the repo's [adding-notebooks guide](https://github.com/dandi/example-notebooks/blob/master/docs/adding-notebooks.md).
 
 If cells fail, fix the code and re-run. Common issues:
 - **remfile timeout**: Some NWB files are large. Consider loading less data or a smaller session.
@@ -327,26 +332,24 @@ Present this to the user and request feedback. Only proceed to Step 5 after you 
 
 ### Step 5: Submit to example-notebooks
 
-Clone the `dandi/example-notebooks` repository and add the notebook:
+With the test environment still active (the script needs `uv` on `PATH` and `nbformat`,
+which Jupyter installed), run the repo's lock script from the root of the clone. It
+resolves `requirements.in` against Colab's runtime and writes the Colab badge and the
+pinned `!uv pip install --system` cell at the top of the notebook. CI fails a new
+notebook that lacks this cell.
 
 ```bash
-# Clone the repo (or fork if you don't have write access)
-gh repo fork dandi/example-notebooks --clone
-cd example-notebooks
+cd ../../..  # root of the example-notebooks clone
+python .github/scripts/lock_notebook.py <dandiset_id>/<lab_name>/<mnemonic>/<dandiset_id>_demo.ipynb
 
-# Create a branch
-git checkout -b add-notebook-<dandiset_id>
-
-# Copy the notebook directory
-cp -r <working_dir>/<dandiset_id> .
-
-# Commit and push
-git add <dandiset_id>/
+git add <dandiset_id>/<lab_name>/<mnemonic>/requirements.in \
+  <dandiset_id>/<lab_name>/<mnemonic>/README.md \
+  <dandiset_id>/<lab_name>/<mnemonic>/<dandiset_id>_demo.ipynb
 git commit -m "Add example notebook for DANDI:<dandiset_id>"
-git push -u origin add-notebook-<dandiset_id>
+git push -u origin add-<dandiset_id>
 
-# Create PR
 gh pr create \
+  --repo dandi/example-notebooks \
   --title "Add tutorial notebook for <dandiset_id>" \
   --body "Add tutorial notebook demonstrating how to stream and visualize NWB data from DANDI:<dandiset_id>.
 
@@ -356,11 +359,11 @@ gh pr create \
 - Visualizes [list key visualizations]
 - [Optional: Reproduces Figure X from the associated paper]
 
-## Dependencies
-Listed in environment.yml (conda + pip)
-
 Generated with [Claude Code](https://claude.com/claude-code)"
 ```
+
+CI on the PR runs the notebook from its install cell. Check the result with
+`gh pr checks` and fix any failure before telling the user.
 
 Inform the user:
 > The example notebook has been submitted as a PR to dandi/example-notebooks.

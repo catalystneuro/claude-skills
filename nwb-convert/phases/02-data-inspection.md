@@ -91,10 +91,10 @@ mention this to the user and skip exploratory probing for that stream.
 
    **For calcium imaging (ScanImage, Scanbox, Suite2p, etc.):**
    ```python
-   import roiextractors as re
-   imaging = re.read_scanbox(file_path)
-   print(f"FOV size: {imaging.get_image_size()}")
-   print(f"Num frames: {imaging.get_num_frames()}")
+   from roiextractors import SbxImagingExtractor  # or ScanImageImagingExtractor, Suite2pSegmentationExtractor, ...
+   imaging = SbxImagingExtractor(file_path=file_path)
+   print(f"Frame shape: {imaging.get_image_shape()}")
+   print(f"Num frames: {imaging.get_num_samples()}")
    print(f"Sampling rate: {imaging.get_sampling_frequency()}")
    ```
 
@@ -161,7 +161,9 @@ available — some NWB is better than no NWB. Document the data provenance in
 - **Text files** — check delimiter (tab vs comma vs space), header presence, encoding
 - **SpikeGLX** — the meta file is essential; make sure .bin and .meta are co-located
 - **Suite2p** — look for the `suite2p/plane0/` directory structure
-- **Multiple probes** — SpikeGLX uses imec0, imec1, etc.; each needs its own interface instance
+- **Multiple probes** — SpikeGLX uses imec0, imec1, etc. `SpikeGLXConverterPipe(folder_path=...)` (from
+  `neuroconv.converters`) loads every SpikeGLX stream (each probe's ap and lf, nidq, and sync channels) in one
+  converter; prefer it over one `SpikeGLXRecordingInterface` per stream
 
 ### Damaged or Incomplete Sessions
 
@@ -179,7 +181,7 @@ Add an "Interface Mapping" section:
 | Stream | Interface | source_data | Status |
 |--------|-----------|-------------|--------|
 | Raw AP | SpikeGLXRecordingInterface | folder_path, stream_id="imec0.ap" | Verified |
-| LFP | SpikeGLXLFPInterface | folder_path, stream_id="imec0.lf" | Verified |
+| LFP | SpikeGLXRecordingInterface | folder_path, stream_id="imec0.lf" | Verified |
 | Sorting | PhySortingInterface | folder_path | Verified |
 | VR position | CUSTOM: VRBehaviorInterface | file_path | Needs implementation |
 | Lick events | CUSTOM: EventsInterface | folder_path | Needs implementation |

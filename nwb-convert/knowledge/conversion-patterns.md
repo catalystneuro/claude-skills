@@ -10,7 +10,7 @@ This document captures patterns observed across ~60 CatalystNeuro conversion rep
 class MyNWBConverter(NWBConverter):
     data_interface_classes = dict(
         Recording=SpikeGLXRecordingInterface,
-        LFP=SpikeGLXLFPInterface,
+        LFP=SpikeGLXRecordingInterface,  # source_data["LFP"] = dict(folder_path=..., stream_id="imec0.lf")
         Sorting=PhySortingInterface,
         Behavior=CustomBehaviorInterface,
     )
@@ -30,7 +30,7 @@ Key characteristics:
 from neuroconv import ConverterPipe
 
 interfaces = []
-interfaces.append(SpikeGLXRecordingInterface(folder_path=path))
+interfaces.append(SpikeGLXRecordingInterface(folder_path=path, stream_id="imec0.ap"))
 if sorting_exists:
     interfaces.append(PhySortingInterface(folder_path=phy_path))
 converter = ConverterPipe(data_interfaces=interfaces)
@@ -63,16 +63,19 @@ Used when:
 
 **Used by**: reimer-arenkiel-lab (DataJoint + TIFF)
 
-The NWBConverter handles some data streams, then additional data is added
-directly to the NWBFile via standalone functions:
+Standalone functions add some data directly to an in-memory NWBFile, then the
+NWBConverter adds its data streams to that file and writes it:
 
 ```python
+from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata
+
 converter = MyConverter(source_data=source_data)
-nwbfile = converter.create_nwbfile(metadata=metadata)
+nwbfile = make_nwbfile_from_metadata(metadata=metadata)
 # Add more data directly
 add_trials_from_database(nwbfile, session_key)
 add_behavior_from_database(nwbfile, session_key)
-configure_and_write_nwbfile(nwbfile, nwbfile_path)
+# run_conversion validates metadata, aligns interfaces, adds their data, and writes
+converter.run_conversion(nwbfile=nwbfile, nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 ```
 
 ## Pattern 5: Ophys with Suite2p + Custom Behavioral Data
@@ -102,23 +105,45 @@ Key considerations:
 - Add behavioral data as `BehavioralTimeSeries` in `processing["behavior"]`
 - Add stimulus data via `nwbfile.add_stimulus()`
 
-Ophys metadata YAML should include device and imaging plane info:
+Ophys metadata YAML should include device and imaging plane info, in the dict format that `get_metadata()`
+returns. Print `converter.get_metadata()` and each ophys interface's `get_metadata_template()` first and write the
+YAML in that shape. `MicroscopySeries` and `PlaneSegmentations` are keyed by each interface's `metadata_key`
+(defaults: `sbx_imaging` for `SbxImagingInterface`, `suite2p_segmentation_chan1_plane0` for
+`Suite2pSegmentationInterface`). Entries in the old list format (`Ophys: Device: - name: ...`) are ignored
+without an error.
 
 ```yaml
+DeviceModels:
+  microscope_model:
+    name: Neurolabware two-photon microscope
+    manufacturer: Neurolabware  # or Bruker, Thorlabs, etc.
+    description: Resonant scanning two-photon microscope
+Devices:
+  microscope:
+    name: Microscope
+    description: Two-photon resonant scanning microscope
+    device_model_metadata_key: microscope_model
 Ophys:
-  Device:
-    - name: Microscope
-      description: Two-photon resonant scanning microscope
-      manufacturer: Neurolabware  # or Bruker, Thorlabs, etc.
-  ImagingPlane:
-    - name: ImagingPlane
+  ImagingPlanes:
+    imaging_plane:
+      name: ImagingPlane
       description: Imaging plane in hippocampal CA1
       excitation_lambda: 920.0
       indicator: GCaMP6f
       location: CA1
-  TwoPhotonSeries:
-    - name: TwoPhotonSeries
+      device_metadata_key: microscope
+      optical_channel:
+        - name: Green
+          description: GCaMP6f emission
+          emission_lambda: 510.0
+  MicroscopySeries:
+    sbx_imaging:
+      name: TwoPhotonSeries
       description: Two-photon calcium imaging data
+      imaging_plane_metadata_key: imaging_plane
+  PlaneSegmentations:
+    suite2p_segmentation_chan1_plane0:
+      imaging_plane_metadata_key: imaging_plane
 ```
 
 ## Common Custom Interface Patterns
@@ -137,10 +162,10 @@ from pymatreader import read_mat
 mat = read_mat(file_path)
 data = mat["variable_name"]
 
-# For tabular data where pymatreader fails (newest, most capable)
-# pip install matio
-import matio
-mat = matio.loadmat(file_path)
+# For MATLAB tables and strings that scipy and pymatreader cannot read
+# pip install mat-io
+from matio import load_from_mat
+mat = load_from_mat(file_path)
 data = mat["variable_name"]
 
 # For MATLAB v7.3+ (HDF5-based) — use when the above fail
@@ -219,62 +244,41 @@ for _, row in trials_df.iterrows():
     )
 ```
 
-### Creating Events (core pynwb EventsTable)
+### Creating Events
 
-Prefer a NeuroConv events interface (see the `events` category of
-`neuroconv-interfaces.yaml`) when one reads the source format. Otherwise:
+See the `EventsTable` section of `knowledge/pynwb-behavior.md`.
 
-```python
-from pynwb.event import EventsTable
+### Compression and chunking
 
-lick_events = EventsTable(name="lick_times", description="Times of lick events")
-for timestamp in lick_timestamps:
-    lick_events.add_row(timestamp=timestamp)
-nwbfile.add_events_table(lick_events)
-```
-
-### Using H5DataIO for compression
-
-```python
-from hdmf.backends.hdf5.h5_utils import H5DataIO
-
-compressed_data = H5DataIO(data=large_array, compression="gzip")
-ts = TimeSeries(name="my_data", data=compressed_data, ...)
-```
+Pass plain arrays (or a `SliceableDataChunkIterator` for data larger than memory) and do not wrap them in
+`H5DataIO`. `run_conversion` chunks and compresses every dataset. To change those settings, see
+`knowledge/pynwb-advanced-io.md`.
 
 ## Synchronization Patterns from Real Repos
 
 ### wen22: NIDQ TTL-based offset
 
 ```python
-from spikeinterface.extractors import SpikeGLXRecordingExtractor
 import numpy as np
+from neuroconv.datainterfaces import SpikeGLXNIDQInterface
 
-nidq = SpikeGLXRecordingExtractor(folder_path=spikeglx_path, stream_id="nidq")
-signal = nidq.get_traces(channel_ids=["nidq#XA2"]).flatten()
-binary = (signal > signal.max() / 2).astype(int)
-rising_edges = np.where(np.diff(binary) > 0)[0]
-ttl_times = rising_edges / nidq.get_sampling_frequency()
+nidq_interface = SpikeGLXNIDQInterface(folder_path=spikeglx_path)
+ttl_times = nidq_interface.get_event_times_from_ttl(channel_name="XA2")
 
 # Compare with behavioral epoch boundaries to get offset
-offset = np.mean(ttl_times[:n] - behavioral_epoch_times[:n])
-# Shift all behavioral timestamps
-behavioral_timestamps += offset
+n = len(behavioral_epoch_times)
+offset = np.mean(ttl_times[:n] - behavioral_epoch_times)
+behavior_interface.set_aligned_timestamps(behavior_interface.get_timestamps() + offset)
 ```
 
 ### reimer-arenkiel: Multi-clock interpolation
 
 ```python
-from scipy.interpolate import interp1d
-
-# Map behavior clock → odor clock
-interp_func = interp1d(
-    behavior_scan_times,
-    odor_scan_times[:len(behavior_scan_times)],
-    kind="linear",
-    fill_value="extrapolate",
+# Map behavior clock to odor clock
+behavior_interface.align_by_interpolation(
+    unaligned_timestamps=behavior_scan_times,
+    aligned_timestamps=odor_scan_times[: len(behavior_scan_times)],
 )
-aligned_times = interp_func(behavior_timestamps)
 ```
 
 ### ophys: Frame-rate inference from DataFrame
@@ -287,6 +291,8 @@ rate = 1.0 / df["time"].diff().mean()
 
 ## Session Discovery Patterns
 
+Each dict holds exactly the per-session arguments of `session_to_nwb`.
+
 ### Directory-based (most common)
 
 ```python
@@ -294,10 +300,7 @@ def get_session_to_nwb_kwargs_per_session(data_dir_path):
     sessions = []
     for session_dir in sorted(data_dir_path.iterdir()):
         if session_dir.is_dir() and not session_dir.name.startswith("."):
-            sessions.append(dict(
-                data_dir_path=str(session_dir),
-                session_id=session_dir.name,
-            ))
+            sessions.append(dict(data_dir_path=session_dir))
     return sessions
 ```
 
