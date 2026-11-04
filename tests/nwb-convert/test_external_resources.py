@@ -90,6 +90,7 @@ FULL = {
     ("ImagingPlane", "location", "VISp", "MBA:385"),
     ("IntracellularElectrode", "location", "PL", "MBA:972"),
     ("OptogeneticStimulusSite", "location", "VTA", "MBA:749"),
+    ("ViralVectorInjection", "location", "VTA", "MBA:749"),
     # FiberPhotometryTable location column
     ("VectorData", "", "DMS", "UBERON:0005382"),
     ("ElectrodeGroup", "location", "gastrocnemius", "UBERON:0001388"),

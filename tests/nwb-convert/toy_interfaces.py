@@ -22,9 +22,13 @@ class ExtrasInterface(BaseDataInterface):
         nwbfile.create_ogen_site(name="ogen_site", device=device, description="d", excitation_lambda=473.0, location="VTA")
         if not self.fiber_photometry:
             return
-        from ndx_fiber_photometry import FiberPhotometry, FiberPhotometryIndicators, FiberPhotometryTable
+        from ndx_fiber_photometry import (
+            FiberPhotometry, FiberPhotometryIndicators, FiberPhotometryTable, FiberPhotometryViruses,
+            FiberPhotometryVirusInjections,
+        )
         from ndx_ophys_devices import (
             BandOpticalFilter, DichroicMirror, ExcitationSource, FiberInsertion, Indicator, OpticalFiber, Photodetector,
+            ViralVector, ViralVectorInjection,
         )
 
         source = ExcitationSource(name="src", description="d", manufacturer="m")
@@ -35,7 +39,12 @@ class ExtrasInterface(BaseDataInterface):
         emission = BandOpticalFilter(name="filt", description="d", manufacturer="m")
         for device in (source, detector, fiber, mirror, emission):
             nwbfile.add_device(device)
-        indicator = Indicator(name="dLight", description="d", label="dLight1.1")
+        virus = ViralVector(name="virus", construct_name="AAV5-CAG-dLight1.1", manufacturer="m", titer_in_vg_per_ml=1e13)
+        injection = ViralVectorInjection(
+            name="injection", location="VTA", hemisphere="right", reference="bregma", ap_in_mm=-3.1, ml_in_mm=0.5,
+            dv_in_mm=-4.4, volume_in_uL=0.5, viral_vector=virus,
+        )
+        indicator = Indicator(name="dLight", description="d", label="dLight1.1", viral_vector_injection=injection)
         table = FiberPhotometryTable(name="FiberPhotometryTable", description="d")
         for wavelength in (465.0, 405.0):
             table.add_row(location="DMS", excitation_wavelength_in_nm=wavelength, emission_wavelength_in_nm=525.0,
@@ -43,6 +52,8 @@ class ExtrasInterface(BaseDataInterface):
                           dichroic_mirror=mirror, emission_filter=emission)
         nwbfile.add_lab_meta_data(FiberPhotometry(
             name="fiber_photometry", fiber_photometry_table=table,
+            fiber_photometry_viruses=FiberPhotometryViruses(viral_vectors=[virus]),
+            fiber_photometry_virus_injections=FiberPhotometryVirusInjections(viral_vector_injections=[injection]),
             fiber_photometry_indicators=FiberPhotometryIndicators(indicators=[indicator]),
         ))
 

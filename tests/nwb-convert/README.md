@@ -11,8 +11,8 @@ change to what is tested, and nothing needs to be kept in sync by hand.
 prescribes, with the helper and the converter hook copied from the knowledge file, and runs
 a NeuroConv conversion through it. The conversion uses NeuroConv's mock recording, imaging,
 and pose estimation interfaces, plus `toy_interfaces.py`, which adds an intracellular
-electrode, an optogenetic site, a fiber photometry table, and an EMG electrode group. No
-source data are needed. The tests check:
+electrode, an optogenetic site, a fiber photometry table with a viral vector injection, and
+an EMG electrode group. No source data are needed. The tests check:
 
 - the exact set of references written, across every kind of field the phase covers
 - that a value with several terms is not written twice, and that annotated values are unchanged
