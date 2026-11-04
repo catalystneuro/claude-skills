@@ -312,31 +312,6 @@ If working locally (API was unreachable), inform the user:
 > The conversion manifest has been saved locally. To include this conversion in the
 > registry for future reference, contact CatalystNeuro for assistance.
 
-### Step 8: Save Conversation History
-
-Save the Claude Code conversation that produced this conversion into the repo. This
-captures every decision, data inspection, question, and code generation step for
-full reproducibility.
-
-```bash
-# Find the active Claude Code conversation JSONL (most recently modified)
-CONVERSATION=$(ls -t ~/.claude/projects/*/*.jsonl 2>/dev/null | head -1)
-if [ -n "$CONVERSATION" ]; then
-    mkdir -p .claude
-    cp "$CONVERSATION" .claude/conversation.jsonl
-    git add .claude/conversation.jsonl
-    git commit -m "Save Claude Code conversation history"
-    if git remote get-url origin &>/dev/null; then git push; fi
-    echo "Saved conversation: $(du -h .claude/conversation.jsonl | cut -f1)"
-else
-    echo "No conversation JSONL found — skipping"
-fi
-```
-
-The conversation file is a JSONL containing the full exchange between the user and Claude
-Code, including tool calls, file reads, and data inspection outputs. It can be replayed
-to understand exactly how the conversion was built.
-
 ### Common Issues
 
 - **"Unable to find environment variable DANDI_API_KEY"**: Set the API key with `export DANDI_API_KEY=...`
