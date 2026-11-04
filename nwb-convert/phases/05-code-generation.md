@@ -303,11 +303,9 @@ behavior_module = get_module(nwbfile, "behavior", "Processed behavioral data")
 behavior_module.add(my_container)
 ```
 
-**Use `H5DataIO` for compression:**
-```python
-from hdmf.backends.hdf5.h5_utils import H5DataIO
-data_compressed = H5DataIO(data=my_array, compression="gzip")
-```
+**Compression and chunking:** pass plain arrays (or a `SliceableDataChunkIterator` for data larger
+than memory) and do not wrap them in `H5DataIO`. `run_conversion` chunks and compresses every dataset.
+To change those settings, see `knowledge/pynwb-advanced-io.md`.
 
 #### Time Series Best Practices (from NWB Inspector)
 

@@ -47,7 +47,7 @@ The conversion agent should follow these when generating code.
 - **No NaN in timestamps**: timestamps must never contain NaN values.
 - **Use `rate` + `starting_time` for regular sampling**: if data has a constant sampling rate, set `rate` (Hz) and `starting_time` (seconds) instead of providing a `timestamps` array. This saves space and is more precise.
 - **Avoid negative timestamps**: all timestamps should be >= 0. Negative timestamps imply data before `session_start_time`, which is usually an error.
-- **Use chunking and compression**: for large datasets, use `H5DataIO` with `compression="gzip"` and appropriate chunk sizes.
+- **Use chunking and compression**: NeuroConv applies both by default. Pass plain arrays, not `H5DataIO`-wrapped data, and change settings through the backend configuration (see `knowledge/pynwb-advanced-io.md`).
 - **`resolution`**: set to `-1.0` if unknown. Otherwise, provide the smallest meaningful difference between data values.
 - **Rate must be positive and nonzero**: if using `rate`, it must be > 0.
 - **Use appropriate TimeSeries subtypes**: don't use bare `TimeSeries` when a more specific type exists (e.g., `ElectricalSeries` for ephys, `SpatialSeries` for position).
