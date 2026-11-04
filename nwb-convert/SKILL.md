@@ -6,17 +6,7 @@ description: >
   metadata collection, synchronization analysis, code generation, ontology annotation, testing, DANDI upload,
   Dandiset metadata, and example notebook generation. Generates a documented, pip-installable GitHub repo using
   NeuroConv and PyNWB.
-user_invocable: true
-argument: Optional path to data directory, Google Drive folder URL, or existing conversion repo. Add `--stacked` to deliver the conversion as one pull request per data stream.
-tools:
-  - Bash
-  - Read
-  - Write
-  - Edit
-  - Glob
-  - Grep
-  - Task
-  - AskUserQuestion
+argument-hint: "[data path | Google Drive URL | conversion repo] [--stacked]"
 ---
 
 <context>
