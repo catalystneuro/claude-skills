@@ -38,7 +38,8 @@ Write each field in the format given in `knowledge/nwb-best-practices.md` (NWBFi
 
 These map to NWB metadata in the dict format that NeuroConv's `get_metadata()` returns. Key `MicroscopySeries`
 by the imaging interface's `metadata_key`; `interface.get_metadata_template()` shows the full shape with the keys
-filled in. Entries in the old list format (`Ophys: Device: - name: ...`) are ignored without an error.
+filled in. Entries in the old list format (`Ophys: Device: - name: ...`) are deprecated, and merged onto
+`get_metadata()` their values are not written, with only a deprecation warning.
 ```yaml
 DeviceModels:
   microscope_model:
