@@ -161,7 +161,9 @@ available — some NWB is better than no NWB. Document the data provenance in
 - **Text files** — check delimiter (tab vs comma vs space), header presence, encoding
 - **SpikeGLX** — the meta file is essential; make sure .bin and .meta are co-located
 - **Suite2p** — look for the `suite2p/plane0/` directory structure
-- **Multiple probes** — SpikeGLX uses imec0, imec1, etc.; each needs its own interface instance
+- **Multiple probes** — SpikeGLX uses imec0, imec1, etc. `SpikeGLXConverterPipe(folder_path=...)` (from
+  `neuroconv.converters`) loads every SpikeGLX stream (each probe's ap and lf, nidq, and sync channels) in one
+  converter; prefer it over one `SpikeGLXRecordingInterface` per stream
 
 ### Damaged or Incomplete Sessions
 
@@ -179,7 +181,7 @@ Add an "Interface Mapping" section:
 | Stream | Interface | source_data | Status |
 |--------|-----------|-------------|--------|
 | Raw AP | SpikeGLXRecordingInterface | folder_path, stream_id="imec0.ap" | Verified |
-| LFP | SpikeGLXLFPInterface | folder_path, stream_id="imec0.lf" | Verified |
+| LFP | SpikeGLXRecordingInterface | folder_path, stream_id="imec0.lf" | Verified |
 | Sorting | PhySortingInterface | folder_path | Verified |
 | VR position | CUSTOM: VRBehaviorInterface | file_path | Needs implementation |
 | Lick events | CUSTOM: EventsInterface | folder_path | Needs implementation |

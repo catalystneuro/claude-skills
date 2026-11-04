@@ -10,7 +10,7 @@ This document captures patterns observed across ~60 CatalystNeuro conversion rep
 class MyNWBConverter(NWBConverter):
     data_interface_classes = dict(
         Recording=SpikeGLXRecordingInterface,
-        LFP=SpikeGLXLFPInterface,
+        LFP=SpikeGLXRecordingInterface,  # source_data["LFP"] = dict(folder_path=..., stream_id="imec0.lf")
         Sorting=PhySortingInterface,
         Behavior=CustomBehaviorInterface,
     )
@@ -30,7 +30,7 @@ Key characteristics:
 from neuroconv import ConverterPipe
 
 interfaces = []
-interfaces.append(SpikeGLXRecordingInterface(folder_path=path))
+interfaces.append(SpikeGLXRecordingInterface(folder_path=path, stream_id="imec0.ap"))
 if sorting_exists:
     interfaces.append(PhySortingInterface(folder_path=phy_path))
 converter = ConverterPipe(data_interfaces=interfaces)

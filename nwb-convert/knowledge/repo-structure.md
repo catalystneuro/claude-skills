@@ -221,19 +221,7 @@ class <ConversionName>NWBConverter(NWBConverter):
 
 The `data_interface_classes` dict maps **arbitrary string keys** to interface classes. The keys become the keys you use in `source_data` and `conversion_options` dicts. Choose keys that describe the data modality clearly.
 
-Common built-in interfaces from `neuroconv.datainterfaces`:
-
-| Modality | Interface | When to use |
-|----------|-----------|-------------|
-| Neuropixels raw | `SpikeGLXRecordingInterface` | SpikeGLX .bin/.meta files |
-| Neuropixels LFP | `SpikeGLXLFPInterface` | SpikeGLX LFP band |
-| Spike sorting | `PhySortingInterface` | Phy/Kilosort output |
-| Spike sorting | `KiloSortSortingInterface` | KiloSort output directly |
-| Calcium imaging | `TiffImagingInterface` | TIFF stacks |
-| Calcium segmentation | `Suite2pSegmentationInterface` | Suite2p output |
-| Video | `VideoInterface` | Behavioral video files |
-| Intracellular | `AbfInterface` | Axon Binary Format |
-| EDF signals | Custom needed | EDF format |
+Look up built-in interfaces, their formats, and their required `source_data` arguments in `knowledge/neuroconv-interfaces.yaml`.
 
 When no built-in interface exists for a data type, write a custom `BaseDataInterface` subclass (see Section 6).
 
@@ -243,7 +231,7 @@ This converter has 10 data interfaces, mixing built-in and custom:
 
 ```python
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import VideoInterface
+from neuroconv.datainterfaces import ExternalVideoInterface
 from neuroconv.utils.dict import DeepDict
 from datetime import timedelta
 
@@ -271,7 +259,7 @@ class Zaki2024NWBConverter(NWBConverter):
         EDFSignals=Zaki2024EDFInterface,
         MultiEDFSignals=Zaki2024MultiEDFInterface,
         FreezingBehavior=EzTrackFreezingBehaviorInterface,
-        Video=VideoInterface,
+        Video=ExternalVideoInterface,
         ShockStimuli=Zaki2024ShockStimuliInterface,
         CellRegistration=Zaki2024CellRegistrationInterface,
     )
@@ -347,7 +335,8 @@ def session_to_nwb(
 
     # Add Recording
     source_data.update(dict(Recording=dict(
-        file_path=str(data_dir_path / "recording.ap.bin"),
+        folder_path=str(data_dir_path / "<session>_g0" / "<session>_g0_imec0"),
+        stream_id="imec0.ap",
     )))
     conversion_options.update(dict(Recording=dict(stub_test=stub_test)))
 
@@ -453,7 +442,7 @@ def session_to_nwb(
 
     if video_file_path:
         source_data.update(dict(Video=dict(file_paths=[video_file_path])))
-        conversion_options.update(dict(Video=dict(stub_test=stub_test)))
+        conversion_options.update(dict(Video=dict()))
 
     if shock_stimulus is not None:
         source_data.update(ShockStimuli=dict())

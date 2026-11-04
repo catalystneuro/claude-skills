@@ -22,9 +22,10 @@ The extension defines:
 ## NeuroConv Integration
 
 NeuroConv has built-in interfaces for the major pose estimation tools:
-- `DeepLabCutInterface` — reads DLC `.h5` or `.csv` output
-- `SLEAPInterface` — reads SLEAP `.slp` or `.nwb` output
-- `LightningPoseInterface` — reads Lightning Pose output
+- `DeepLabCutInterface`: DLC `.h5` or `.csv` output
+- `SLEAPInterface`: SLEAP `.slp` output (one interface per track for multi-animal files)
+- `LightningPoseDataInterface` (`neuroconv.datainterfaces`) or `LightningPoseConverter` (`neuroconv.converters`):
+  Lightning Pose `.csv` output plus the original video
 
 **Prefer NeuroConv interfaces when available.** Only use raw ndx-pose construction
 when data is in a custom format not supported by NeuroConv.

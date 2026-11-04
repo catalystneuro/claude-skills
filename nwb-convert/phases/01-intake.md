@@ -460,8 +460,8 @@ After this phase, update `conversion_notes.md` with:
 ## Data Streams
 | Stream | Format | Recording System | File Pattern | NeuroConv Interface? |
 |--------|--------|-----------------|--------------|---------------------|
-| Raw ephys | SpikeGLX .bin | Neuropixel | *_g0_t0.imec0.ap.bin | SpikeGLXRecordingInterface |
-| LFP | SpikeGLX .bin | Neuropixel | *_g0_t0.imec0.lf.bin | SpikeGLXLFPInterface |
+| Raw ephys | SpikeGLX .bin | Neuropixel | *_g0_t0.imec0.ap.bin | SpikeGLXRecordingInterface (stream_id="imec0.ap") |
+| LFP | SpikeGLX .bin | Neuropixel | *_g0_t0.imec0.lf.bin | SpikeGLXRecordingInterface (stream_id="imec0.lf") |
 | Spike sorting | Phy | Kilosort+Phy | phy/ folder | PhySortingInterface |
 | Behavior | .txt files | Custom | *position.txt, *licks.txt | Custom needed |
 
