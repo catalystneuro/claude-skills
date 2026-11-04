@@ -8,17 +8,18 @@ All behavior container types and when to use each.
 |-----------|-----------|-----------|---------|
 | Spatial position (x, y, z) | `Position` | `SpatialSeries` | Running on linear track |
 | Continuous signals | `BehavioralTimeSeries` | `TimeSeries` | Running speed, lick rate |
-| Irregular events | `BehavioralEvents` | `TimeSeries` | Lever presses at variable times |
+| Discrete events | `EventsTable` | (one row per event) | Lever presses, licks, rewards |
 | Pupil diameter | `PupilTracking` | `TimeSeries` | Eye tracking pupil size |
 | Gaze position | `EyeTracking` | `SpatialSeries` | Eye tracking x,y position |
 | Head direction | `CompassDirection` | `SpatialSeries` | Angular heading |
 
-All containers go in `processing["behavior"]`.
+All containers go in `processing["behavior"]`, except `EventsTable`, which goes in `nwbfile.events` via
+`nwbfile.add_events_table()`.
 
 ## Position
 
 ```python
-from pynwb.behavior import Position, SpatialSeries
+from pynwb.behavior import Position
 from neuroconv.tools.nwb_helpers import get_module
 
 position = Position()
@@ -29,6 +30,7 @@ position.create_spatial_series(
     unit="meters",
     reference_frame="Top-left corner of arena",
     conversion=0.01,            # if data is in cm
+    description="Animal position from overhead camera",
 )
 
 behavior = get_module(nwbfile, "behavior", "Processed behavioral data")
@@ -41,7 +43,6 @@ For **continuous** behavioral signals sampled at regular intervals:
 
 ```python
 from pynwb.behavior import BehavioralTimeSeries
-from pynwb import TimeSeries
 
 bts = BehavioralTimeSeries()
 bts.create_timeseries(
@@ -61,23 +62,25 @@ bts.create_timeseries(
 behavior.add(bts)
 ```
 
-## BehavioralEvents
+## EventsTable
 
-For **irregularly timed** behavioral events:
+For discrete behavioral events (lever presses, licks, rewards), one table per event type:
 
 ```python
-from pynwb.behavior import BehavioralEvents
+from pynwb.event import EventsTable
 
-be = BehavioralEvents()
-be.create_timeseries(
+lever_presses = EventsTable(
     name="lever_presses",
-    data=np.ones(n_presses),      # amplitude/value at each event
-    timestamps=press_times,        # irregular timestamps
-    unit="n.a.",
     description="Times of lever press events",
+    source_description="Lever TTL on DAQ channel 2",   # optional
 )
-behavior.add(be)
+for press_time in press_times:
+    lever_presses.add_event(timestamp=float(press_time))   # optional: duration=, annotation=, extra columns
+nwbfile.add_events_table(lever_presses)
 ```
+
+Prefer a NeuroConv events interface (see the `events` category of `neuroconv-interfaces.yaml`) when one reads the
+source format.
 
 ## PupilTracking
 
@@ -99,7 +102,7 @@ behavior.add(pt)
 ## EyeTracking
 
 ```python
-from pynwb.behavior import EyeTracking, SpatialSeries
+from pynwb.behavior import EyeTracking
 
 et = EyeTracking()
 et.create_spatial_series(
@@ -116,7 +119,7 @@ behavior.add(et)
 ## CompassDirection
 
 ```python
-from pynwb.behavior import CompassDirection, SpatialSeries
+from pynwb.behavior import CompassDirection
 
 cd = CompassDirection()
 cd.create_spatial_series(
@@ -125,6 +128,7 @@ cd.create_spatial_series(
     rate=30.0,
     unit="radians",              # must be "radians" or "degrees"
     reference_frame="0=East, pi/2=North",
+    description="Head direction from overhead camera",
 )
 behavior.add(cd)
 ```

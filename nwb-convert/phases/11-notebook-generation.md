@@ -16,7 +16,7 @@ at least one combined analysis (e.g., place fields, PSTHs, or trial-aligned time
 
 Before writing any code, collect the information needed to plan the notebook:
 
-1. **Dandiset ID and version** (from Phase 8)
+1. **Dandiset ID and version** (from Phase 9)
 2. **Session inventory**: List all NWB files. Identify which sessions have behavioral data,
    which are ecephys-only, etc.
 3. **Data streams available**: Units (spike times), Position/SpatialSeries, LFP,
