@@ -5,8 +5,8 @@ one review notebook per data stream, so a reviewer can check each stream on its 
 demo notebook with combined analyses that serves as a starting point for analysis. Both
 validate the conversion output before the data is uploaded to DANDI.
 
-**Entry**: Testing and validation are complete (Phase 7). At least one full NWB file has
-been written to disk.
+**Entry**: Testing and validation are complete (Phase 7). Every session has been converted
+in full and written to disk.
 
 **Exit criteria**: Tested `.ipynb` notebooks that run end-to-end loading local NWB files: one
 review notebook per data stream (Step 3b), and a demo notebook with clear prose and at least
@@ -272,11 +272,6 @@ ax.set_title("Trial-aligned signal")
 - **Code cells** should be concise — one logical operation per cell. Don't cram loading,
   processing, and plotting into one cell.
 - **Import cells** go at the top. Put all imports in one cell, sorted: stdlib → third-party → local.
-- Suppress noisy warnings:
-  ```python
-  import warnings
-  warnings.filterwarnings("ignore", message=".*pynapple.*")
-  ```
 
 ### Step 3b: Write the Per-Stream Review Notebooks
 
@@ -324,18 +319,12 @@ Run every notebook end-to-end using `jupyter execute`:
 
 ```bash
 cd <conversion_repo>/notebooks
-for notebook in *.ipynb; do jupyter execute "$notebook" --timeout=600; done
-```
-
-Or test with `nbconvert`:
-
-```bash
-jupyter nbconvert --to notebook --execute <lab_name>_demo.ipynb --output executed.ipynb
+for notebook in *.ipynb; do jupyter execute --inplace --timeout=600 "$notebook"; done
 ```
 
 Verify:
 1. All cells execute without errors
-2. All plots render correctly (read the output notebook images)
+2. All plots render correctly (read the images saved in the executed notebooks)
 3. The notebook completes in a reasonable time (< 5 minutes)
 
 If cells fail, fix the code and re-run. Common issues:
