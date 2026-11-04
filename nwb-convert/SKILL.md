@@ -94,9 +94,6 @@ $file: ./phases/10-dandi-metadata.md
 ### Phase 11: Example Notebook Generation
 $file: ./phases/11-notebook-generation.md
 
-### Phase 12: Wrap-Up
-$file: ./phases/12-wrap-up.md
-
 ## Deployment Modes
 
 This skill runs in two deployment modes:
