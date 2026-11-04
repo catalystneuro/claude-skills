@@ -4,8 +4,12 @@
 
 **Entry**: You have generated all conversion code from Phase 5.
 
-**Exit criteria**: The conversion runs successfully on at least one session, the output
-passes nwbinspector validation, and the data can be read back correctly.
+**Exit criteria**: One session converts with `stub_test=True` and in full, every stream matches its source,
+and `nwbinspector --config dandi` reports no ERROR, PYNWB_VALIDATION, CRITICAL, or BEST_PRACTICE_VIOLATION
+messages on either file.
+
+Whenever a check below fails, fix the conversion code (metadata, interface, or convert_session.py), rerun the
+conversion, and repeat the checks.
 
 ### Step 1: Install the Package
 
@@ -16,8 +20,6 @@ uv pip install -e ".[<conversion_name>]"
 ```
 
 ### Step 2: Run a Stub Test
-
-First, run with `stub_test=True` to convert a small subset of data quickly:
 
 ```python
 from <package>.<conversion_name>.<conversion_name>_convert_session import session_to_nwb
@@ -31,20 +33,16 @@ session_to_nwb(
 
 ### Step 3: Inspect the NWB File
 
-Read back the file and verify contents:
+Read the file back and check every data stream from Phase 2 against its source: values, units, data
+orientation (time on the first axis), and timestamps (seconds from `session_start_time`, spanning the
+expected session duration).
 
 ```python
-from hdmf.common import DynamicTable
-from pynwb import NWBHDF5IO, TimeSeries
+from pynwb import NWBHDF5IO
 
 with NWBHDF5IO("/path/to/output/session.nwb", "r") as io:
     nwbfile = io.read()
     print(nwbfile)
-    for neurodata_object in nwbfile.objects.values():
-        if isinstance(neurodata_object, TimeSeries):
-            print(neurodata_object.name, neurodata_object.data.shape, neurodata_object.data.dtype)
-        elif isinstance(neurodata_object, DynamicTable):
-            print(neurodata_object.name, len(neurodata_object), neurodata_object.colnames)
 ```
 
 #### Check the Ontology Annotations
@@ -87,75 +85,31 @@ column that have no meaning and validates the HED strings as they were written.
 
 ### Step 4: Run NWB Inspector
 
-**You MUST run nwbinspector on every converted file.** Do not skip this step or leave it for the user.
-
-Run it via bash and capture the full output:
+Run NWB Inspector on every converted file yourself, with the configuration DANDI uses on upload:
 
 ```bash
 nwbinspector /path/to/output/session.nwb --config dandi
 ```
 
-`knowledge/nwb-best-practices.md` ("Validation") says what `--config dandi` changes and what each severity level
-means. `dandi validate` needs a Dandiset folder, so it runs in Phase 9 after `dandi organize`.
-
-**For each issue reported, you must:**
-1. Find the message's check name in `knowledge/nwb-best-practices.md`, where each rule names the check that reports it
-2. Identify the root cause in the conversion code and fix it (metadata, interface, or convert_session.py)
-3. Re-run the conversion (stub_test=True)
-4. Re-run nwbinspector to confirm the fix
-
-**Keep iterating until nwbinspector produces zero ERROR, PYNWB_VALIDATION, CRITICAL, and BEST_PRACTICE_VIOLATION messages.**
-Fix a BEST_PRACTICE_SUGGESTION if it is straightforward; otherwise note it for the user.
-Show the user the final clean nwbinspector output as confirmation.
+Fix every ERROR, PYNWB_VALIDATION, CRITICAL, and BEST_PRACTICE_VIOLATION message. Fix BEST_PRACTICE_SUGGESTION
+messages where straightforward and note the rest for the user. `knowledge/nwb-best-practices.md` ("Validation")
+explains what `--config dandi` changes, and each of its rules names the check that reports it. `dandi validate`
+needs a Dandiset folder, so it runs in Phase 9. Show the user the final clean output.
 
 ### Step 5: Run Full Conversion (one session)
 
-Once stub_test passes and nwbinspector is clean, run with `stub_test=False` on a single session:
-
-```python
-session_to_nwb(
-    data_dir_path="/path/to/sample/session",
-    output_dir_path="/path/to/output",
-    stub_test=False,
-)
-```
-
-Then run nwbinspector again on the full output — some issues only appear with real data
-(e.g., data orientation problems, timestamp gaps, large uncompressed datasets).
-
-### Step 6: Validate Data Integrity
-
-For critical data streams, compare source and NWB values:
-
-```python
-import numpy as np
-import spikeinterface.extractors as se
-from pynwb import NWBHDF5IO
-
-# Example: verify spike times against the Phy output, matching units by the unit_name column
-sorting = se.read_phy(phy_folder_path)
-source_unit_ids = {str(unit_id): unit_id for unit_id in sorting.unit_ids}
-
-with NWBHDF5IO("/path/to/output/full_session.nwb", "r") as io:
-    nwbfile = io.read()
-    units = nwbfile.units.to_dataframe()
-    for unit_name, nwb_spike_times in zip(units["unit_name"], units["spike_times"]):
-        source_spike_times = sorting.get_unit_spike_train(unit_id=source_unit_ids[unit_name], return_times=True)
-        np.testing.assert_allclose(nwb_spike_times, source_spike_times, atol=1e-6)
-```
-
-Timestamps are in seconds from `session_start_time`. Compare the first and last timestamps
-of each stream with the expected session duration.
+Run one session with `stub_test=False`, then repeat Steps 3 and 4 on the full file. Some problems, such as
+timestamp gaps or wrong data orientation, only appear with all of the data.
 
 ### Push Phase 7 Results
 
 In stacked PRs mode, commit each fix on the branch of the stream it belongs to and carry it up
 the stack (`knowledge/stacked-prs.md`, "Changing a lower branch") in place of the single commit below.
 
-After all tests pass and nwbinspector is clean, commit any bug fixes and push:
+After all checks pass, commit any bug fixes and push:
 ```bash
 git add -A
-git commit -m "Phase 7: testing and validation — all checks passing
+git commit -m "Phase 7: testing and validation, all checks passing
 
 nwbinspector --config dandi: 0 CRITICAL, 0 BEST_PRACTICE_VIOLATION"
 if git remote get-url origin &>/dev/null; then git push; fi
