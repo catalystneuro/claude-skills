@@ -791,145 +791,6 @@ conversion_options.update(
 )
 ```
 
-### Real-world example: Complex interface with temporal alignment (EzTrackFreezingBehaviorInterface)
-
-This interface reads data from a CSV file, supports temporal alignment, and writes both a TimeSeries and TimeIntervals:
-
-```python
-import numpy as np
-import pandas as pd
-from pynwb import TimeSeries
-from pynwb.epoch import TimeIntervals
-from pynwb.file import NWBFile
-from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.utils import DeepDict
-from pydantic import FilePath
-from typing import Optional, List
-
-
-class EzTrackFreezingBehaviorInterface(BaseDataInterface):
-    """Adds intervals of freezing behavior and motion series."""
-
-    keywords = ["behavior", "freezing", "motion"]
-
-    def __init__(self, file_path: FilePath, video_sampling_frequency: float, verbose: bool = False):
-        self.file_path = file_path
-        self.verbose = verbose
-        self.video_sampling_frequency = video_sampling_frequency
-        # Private attributes for temporal alignment
-        self._start_times = None
-        self._stop_times = None
-        self._starting_time = None
-
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
-        return metadata
-
-    def get_interval_times(self):
-        """Extract start and stop times of freezing events."""
-        freezing_behavior_df = pd.read_csv(self.file_path)
-        freezing_values = freezing_behavior_df["Freezing"].values
-        changes_in_freezing = np.diff(freezing_values)
-        freezing_start = np.where(changes_in_freezing == 100)[0] + 1
-        freezing_stop = np.where(changes_in_freezing == -100)[0] + 1
-
-        start_frames = freezing_behavior_df["Frame"].values[freezing_start]
-        stop_frames = freezing_behavior_df["Frame"].values[freezing_stop]
-
-        # Use aligned times if set, otherwise compute from frames
-        start_times = (
-            self._start_times if self._start_times is not None
-            else start_frames / self.video_sampling_frequency
-        )
-        stop_times = (
-            self._stop_times if self._stop_times is not None
-            else stop_frames / self.video_sampling_frequency
-        )
-        return start_times, stop_times
-
-    def set_aligned_interval_times(self, start_times, stop_times):
-        self._start_times = start_times
-        self._stop_times = stop_times
-
-    def set_aligned_starting_time(self, aligned_start_time):
-        self._starting_time = aligned_start_time
-
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict] = None, stub_test: bool = False):
-        freezing_behavior_df = pd.read_csv(self.file_path)
-        start_times, stop_times = self.get_interval_times()
-
-        motion_data = freezing_behavior_df["Motion"].values
-        starting_time = self._starting_time if self._starting_time is not None else self.get_starting_time()
-
-        motion_series = TimeSeries(
-            name="MotionSeries",
-            description="Motion measured by pixel change between frames.",
-            data=motion_data[:100] if stub_test else motion_data,
-            unit="n.a",
-            starting_time=starting_time,
-            rate=self.video_sampling_frequency,
-        )
-
-        freeze_intervals = TimeIntervals(name="FreezingIntervals", description="...")
-        for start_time, stop_time in zip(start_times, stop_times):
-            freeze_intervals.add_interval(
-                start_time=start_time,
-                stop_time=stop_time,
-                timeseries=[motion_series],
-            )
-
-        if "behavior" not in nwbfile.processing:
-            behavior_module = nwbfile.create_processing_module(
-                name="behavior", description="Contains behavior data"
-            )
-        else:
-            behavior_module = nwbfile.processing["behavior"]
-
-        behavior_module.add(motion_series)
-        behavior_module.add(freeze_intervals)
-```
-
-### Real-world example: Complex interface with sync channel (Wen21EventsInterface)
-
-This interface demonstrates reading NI-DAQ sync channels to compute behavioral timestamp offsets:
-
-```python
-from nwb_conversion_tools.basedatainterface import BaseDataInterface
-from nwb_conversion_tools.utils.types import FolderPathType
-from nwb_conversion_tools.tools.nwb_helpers import get_module
-from hdmf.backends.hdf5.h5_utils import H5DataIO
-from pynwb.behavior import Position, SpatialSeries
-from pynwb import NWBFile, TimeSeries
-
-
-class Wen21EventsInterface(BaseDataInterface):
-    def __init__(self, session_path: FolderPathType):
-        super().__init__(session_path=session_path)
-
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict):
-        behavior_module = get_module(nwbfile, "behavior")
-        session_path = Path(self.source_data["session_path"])
-
-        # ... read position files, compute temporal offset from NIDQ sync channel ...
-
-        # Add position data with compression
-        spatial_series_object = SpatialSeries(
-            name="position",
-            description="position within the virtual reality wheel",
-            data=H5DataIO(position_data, compression="gzip"),
-            reference_frame="unknown",
-            unit="m",
-            conversion=0.01,
-            timestamps=position_timestamps,
-        )
-
-        pos_obj = Position(name="position within the virtual reality wheel")
-        pos_obj.add_spatial_series(spatial_series_object)
-        behavior_module.add_data_interface(pos_obj)
-```
-
-Note: The older `nwb_conversion_tools` API used `run_conversion()` instead of `add_to_nwbfile()`. Modern NeuroConv uses `add_to_nwbfile()`.
-
 ---
 
 ## 7. metadata.yaml
@@ -973,7 +834,7 @@ Subject:
 
 ### How metadata merging works
 
-The `dict_deep_update` function performs a recursive merge. For nested dicts, keys are merged. For lists, the entire list is replaced (not appended). For scalar values, the later value wins.
+The `dict_deep_update` function performs a recursive merge. Nested dicts merge recursively, scalars are overwritten, and lists are appended with duplicates removed (lists of dicts merge by `name`). To replace a list, assign it after the merge.
 
 ```python
 from neuroconv.utils import load_dict_from_file, dict_deep_update
@@ -1110,8 +971,6 @@ def temporally_align_data_interfaces(self, metadata=None, conversion_options=Non
                     start_times=start_times + time_shift,
                     stop_times=stop_times + time_shift,
                 )
-                starting_time = fb_interface.get_starting_time()
-                fb_interface.set_aligned_starting_time(starting_time + time_shift)
 
             # Shift video timestamps
             if "Video" in self.data_interface_objects:
@@ -1153,11 +1012,14 @@ df_position_data["timestamps"] -= offset_for_behavioral_time_stamps
 
 ### Alignment API summary
 
+These methods exist on `BaseTemporalAlignmentInterface`. A custom interface that must be aligned subclasses it and implements `get_original_timestamps`, `get_timestamps` and `set_aligned_timestamps`.
+
 | Method | When to use |
 |--------|-------------|
 | `interface.get_original_timestamps()` | Get timestamps before any alignment |
 | `interface.set_aligned_timestamps(timestamps)` | Replace all timestamps |
 | `interface.set_aligned_starting_time(t)` | Shift starting time for regularly sampled data |
+| `interface.align_by_interpolation(unaligned_timestamps, aligned_timestamps)` | Map timestamps onto another clock using paired sync times |
 | `interface.set_aligned_interval_times(start_times, stop_times)` | Custom method for interval-based interfaces |
 
 ---

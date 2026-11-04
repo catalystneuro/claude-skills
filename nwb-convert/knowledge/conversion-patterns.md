@@ -63,16 +63,19 @@ Used when:
 
 **Used by**: reimer-arenkiel-lab (DataJoint + TIFF)
 
-The NWBConverter handles some data streams, then additional data is added
-directly to the NWBFile via standalone functions:
+Standalone functions add some data directly to an in-memory NWBFile, then the
+NWBConverter adds its data streams to that file and writes it:
 
 ```python
+from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata
+
 converter = MyConverter(source_data=source_data)
-nwbfile = converter.create_nwbfile(metadata=metadata)
+nwbfile = make_nwbfile_from_metadata(metadata=metadata)
 # Add more data directly
 add_trials_from_database(nwbfile, session_key)
 add_behavior_from_database(nwbfile, session_key)
-configure_and_write_nwbfile(nwbfile, nwbfile_path)
+# run_conversion validates metadata, aligns interfaces, adds their data, and writes
+converter.run_conversion(nwbfile=nwbfile, nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 ```
 
 ## Pattern 5: Ophys with Suite2p + Custom Behavioral Data
@@ -137,10 +140,10 @@ from pymatreader import read_mat
 mat = read_mat(file_path)
 data = mat["variable_name"]
 
-# For tabular data where pymatreader fails (newest, most capable)
-# pip install matio
-import matio
-mat = matio.loadmat(file_path)
+# For MATLAB tables and strings that scipy and pymatreader cannot read
+# pip install mat-io
+from matio import load_from_mat
+mat = load_from_mat(file_path)
 data = mat["variable_name"]
 
 # For MATLAB v7.3+ (HDF5-based) — use when the above fail
