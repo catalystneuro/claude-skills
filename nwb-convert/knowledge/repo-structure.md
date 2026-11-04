@@ -2,8 +2,9 @@
 
 The files every `<lab>-lab-to-nwb` conversion repository has, as Phase 5 generates them. They follow the
 [cookiecutter-my-lab-to-nwb-template](https://github.com/catalystneuro/cookiecutter-my-lab-to-nwb-template).
-Phase 5 says when to write each file. Custom interfaces, temporal alignment, modality-specific metadata, session
-discovery, and other conversion-specific code are in `knowledge/conversion-patterns.md`.
+Phase 5 says when to write each file. Temporal alignment code is in `knowledge/temporal-alignment.md`. Custom
+interfaces, modality-specific metadata, session discovery, and other conversion-specific code are in
+`knowledge/conversion-patterns.md`.
 
 ---
 
@@ -153,7 +154,7 @@ class <ConversionName>NWBConverter(NWBConverter):
     )
 
     def temporally_align_data_interfaces(self, metadata: dict | None = None, conversion_options: dict | None = None):
-        """Implement the sync plan from Phase 4 here (conversion-patterns.md). Omit if no alignment is needed."""
+        """Implement the sync plan from Phase 4 here (temporal-alignment.md). Omit if no alignment is needed."""
 ```
 
 - The keys of `data_interface_classes` are arbitrary names. They become the keys of `source_data` and
