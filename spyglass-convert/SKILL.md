@@ -118,7 +118,9 @@ $file: ./phases/10-notebook.md
   all conversions (timestamps, units, data orientation, etc.)
 - `../nwb-convert/knowledge/temporal-alignment.md` — code for each sync pattern, with real examples
 - `../nwb-convert/knowledge/conversion-patterns.md` — converter patterns, custom interfaces,
-  session discovery, and MATLAB reading (pymatreader, matio, h5py), with real examples
+  and session discovery, with real examples
+- `../nwb-convert/knowledge/reading-source-files.md` — MATLAB reading (pymatreader, matio, h5py),
+  text, and pickle files
 - `../nwb-convert/knowledge/pynwb-behavior.md` — behavior container types
   (BehavioralTimeSeries, Position, PupilTracking, etc.)
 - `../nwb-convert/knowledge/pynwb-advanced-io.md` — H5DataIO compression, chunking,

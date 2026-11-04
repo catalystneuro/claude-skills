@@ -47,20 +47,9 @@ the local mount point. Files are streamed on-demand and cached locally by rclone
    print(f"Sampling rate: {imaging.get_sampling_frequency()}")
    ```
 
-   **For behavior files (.mat, .csv, .txt, .pkl, etc.):**
-   ```python
-   # For MATLAB files
-   import h5py  # or scipy.io.loadmat for v5 .mat files
-   with h5py.File(path) as f:
-       print(list(f.keys()))
-       # Recursively explore structure
-
-   # For CSV/text
-   import pandas as pd
-   df = pd.read_csv(path, sep='\t', nrows=5)
-   print(df.columns.tolist())
-   print(df.head())
-   ```
+   **For behavior files (.mat, .csv, .txt, .pkl, etc.):** open each with the reader for its format in
+   `knowledge/reading-source-files.md`, then print its keys or columns and the first few rows. Explore nested
+   MATLAB structures recursively.
 
 3. **Test NeuroConv interfaces** — for each data stream that has a matching interface, try instantiating it:
    ```python
