@@ -1,8 +1,9 @@
 # Conversion Repo Templates
 
-The templates for every file Phase 5 generates in a `<lab>-lab-to-nwb` conversion repository. They follow the
+The files every `<lab>-lab-to-nwb` conversion repository has, as Phase 5 generates them. They follow the
 [cookiecutter-my-lab-to-nwb-template](https://github.com/catalystneuro/cookiecutter-my-lab-to-nwb-template).
-Phase 5 says when to write each file.
+Phase 5 says when to write each file. Custom interfaces, temporal alignment, modality-specific metadata, session
+discovery, and other conversion-specific code are in `knowledge/conversion-patterns.md`.
 
 ---
 
@@ -10,7 +11,7 @@ Phase 5 says when to write each file.
 
 ```
 <lab>-lab-to-nwb/
-├── .github/workflows/            # Only if the user wants PyPI publishing (Section 10)
+├── .github/workflows/            # Only if the user wants PyPI publishing (Section 8)
 │   ├── auto-publish.yml
 │   └── test-install.yml
 ├── .gitignore                    # Created in Phase 1
@@ -152,7 +153,7 @@ class <ConversionName>NWBConverter(NWBConverter):
     )
 
     def temporally_align_data_interfaces(self, metadata: dict | None = None, conversion_options: dict | None = None):
-        """Implement the sync plan from Phase 4 here (Section 8). Omit this method if no alignment is needed."""
+        """Implement the sync plan from Phase 4 here (conversion-patterns.md). Omit if no alignment is needed."""
 ```
 
 - The keys of `data_interface_classes` are arbitrary names. They become the keys of `source_data` and
@@ -229,7 +230,7 @@ def session_to_nwb(
 
     # Subject metadata — subject_id is required for DANDI
     metadata["Subject"]["subject_id"] = subject_id
-    # Load per-subject metadata from file if available (Section 7)
+    # Load per-subject metadata from file if available (conversion-patterns.md, Per-subject metadata)
     # Field formats: knowledge/nwb-best-practices.md (Subject)
 
     # Run conversion
@@ -326,75 +327,14 @@ if __name__ == "__main__":
 
 `get_session_to_nwb_kwargs_per_session` is the part to write for each conversion. Each dict it returns holds
 exactly the per-session arguments of `session_to_nwb`; `dataset_to_nwb` adds `output_dir_path` and `stub_test`,
-and any other key raises a `TypeError` for every session. Common ways to find the sessions:
-
-```python
-# One directory per session
-session_dir_paths = [path for path in sorted(data_dir_path.iterdir()) if path.is_dir() and not path.name.startswith(".")]
-
-# One file per session, matched by a pattern in its name
-session_dir_paths = [file_path.parent for file_path in sorted(data_dir_path.glob("*/cell_info_session*.mat"))]
-
-# A table the lab keeps, with one row per session (import pandas as pd)
-session_table = pd.read_csv(data_dir_path / "sessions.csv")
-session_dir_paths = [data_dir_path / folder_name for folder_name in session_table["session_folder"]]
-
-return [dict(data_dir_path=session_dir_path) for session_dir_path in session_dir_paths]
-```
+and any other key raises a `TypeError` for every session. Ways to find the sessions are in the Session Discovery
+section of `knowledge/conversion-patterns.md`.
 
 `safe_session_to_nwb` writes each failure to a file so one bad session does not stop the batch.
 
 ---
 
-## 6. Custom DataInterface
-
-Write one only after the reuse order in Phase 5 Step 3a rules out a built-in interface.
-
-```python
-"""Primary class for converting experiment-specific <modality>."""
-from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.utils import DeepDict
-from pydantic import FilePath
-from pynwb.file import NWBFile
-
-
-class <ConversionName><Modality>Interface(BaseDataInterface):
-    """Interface for reading <description>."""
-
-    keywords = ["<modality>"]
-
-    def __init__(self, file_path: FilePath):
-        """
-        Parameters
-        ----------
-        file_path : FilePath
-            Path to the <format> file.
-        """
-        super().__init__(file_path=file_path)
-
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
-        # Add metadata read from the source file itself, e.g. the session start time
-        return metadata
-
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict, stub_test: bool = False):
-        # Read data from self.source_data["file_path"], build PyNWB objects, and add them to nwbfile
-        raise NotImplementedError()
-```
-
-- The `__init__` parameters are the keys of this interface's `source_data` entry. Pass all of them to
-  `super().__init__()`, which stores them in `self.source_data`. Annotate paths with `pydantic`'s `FilePath` or
-  `DirectoryPath` so they are validated.
-- Keep `__init__` light: store paths and read data in `add_to_nwbfile`.
-- Extra keyword arguments of `add_to_nwbfile` are the keys of this interface's `conversion_options` entry.
-  Accept `stub_test` to support stub runs.
-- An interface whose timestamps must be aligned subclasses `BaseTemporalAlignmentInterface` instead (Section 8).
-- An interface can take no source files and receive all its data through `conversion_options`, e.g. shock times
-  and amplitudes the lab reports in the paper.
-
----
-
-## 7. metadata.yaml
+## 6. metadata.yaml
 
 Hand-edited metadata that applies to all sessions of a conversion, collected in Phase 3. `convert_session.py`
 merges it on top of the metadata the interfaces extract.
@@ -434,106 +374,10 @@ Subject:
 `dict_deep_update` merges recursively: nested dicts merge, scalars are overwritten, and lists are appended with
 duplicates removed (lists of dicts merge by `name`). To replace a list, assign it after the merge.
 
-### Ophys metadata
+Devices, imaging planes, and other modality-specific entries, and per-subject files, are in the Case-Specific
+Metadata section of `knowledge/conversion-patterns.md`.
 
-Devices, imaging planes, and series go in the dict format that `get_metadata()` returns. `MicroscopySeries`,
-`PlaneSegmentations` and the other per-interface entries are keyed by each interface's `metadata_key`. Print
-`converter.get_metadata()` and each ophys interface's `get_metadata_template()` and write the YAML in that shape.
-Entries in the old list format (`Ophys: Device: - name: ...`) are ignored without an error.
-
-```yaml
-DeviceModels:
-  microscope_model:
-    name: Miniscope V4
-    manufacturer: Open Ephys
-    description: Head-mounted one-photon microscope.
-Devices:
-  microscope:
-    name: Microscope
-    description: Miniscope implanted over dorsal CA1.
-    device_model_metadata_key: microscope_model
-Ophys:
-  ImagingPlanes:
-    imaging_plane:
-      name: ImagingPlane
-      description: Imaging plane in dorsal CA1.
-      excitation_lambda: 470.0
-      indicator: GCaMP6f
-      location: CA1
-      device_metadata_key: microscope
-      optical_channel:
-        - name: GreenChannel
-          description: Green channel of the microscope.
-          emission_lambda: 513.0
-  MicroscopySeries:
-    imaging:  # the imaging interface's metadata_key
-      name: OnePhotonSeries
-      description: One-photon calcium imaging data.
-      imaging_plane_metadata_key: imaging_plane
-      unit: n.a.
-  PlaneSegmentations:
-    segmentation:  # the segmentation interface's metadata_key
-      imaging_plane_metadata_key: imaging_plane
-```
-
-The series type comes from the imaging interface's `photon_series_type` conversion option, which defaults to `TwoPhotonSeries` in most imaging interfaces (Miniscope defaults to `OnePhotonSeries`) whatever the YAML `name` says. For one-photon data, set it in the converter's `conversion_options`, keyed by the interface name: `conversion_options.update(dict(Imaging=dict(photon_series_type="OnePhotonSeries")))`.
-
-### Per-subject metadata
-
-For datasets with several subjects, keep subject fields in a separate YAML file keyed by subject:
-
-```yaml
-# subject_metadata.yaml
-N2:
-  subject_id: N2
-  age: P90D
-  strain: C57Bl/6
-  genotype: wildtype
-  date_of_birth: 2019-10-22
-  weight: 0.016 kg
-  sex: U
-```
-
-and merge the subject's entry in `convert_session.py`:
-
-```python
-subject_metadata = load_dict_from_file(Path(__file__).parent / "subject_metadata.yaml")[subject_id]
-metadata["Subject"] = dict_deep_update(metadata["Subject"], subject_metadata)
-```
-
----
-
-## 8. Temporal Alignment
-
-When data streams have different clocks or start times, override `temporally_align_data_interfaces()` in the
-NWBConverter. Phase 4 covers the sync patterns and NeuroConv's TTL helpers.
-
-```python
-class <ConversionName>NWBConverter(NWBConverter):
-    data_interface_classes = dict(...)
-
-    def temporally_align_data_interfaces(self, metadata: dict | None = None, conversion_options: dict | None = None):
-        if "Behavior" in self.data_interface_objects:
-            behavior_interface = self.data_interface_objects["Behavior"]
-            time_shift = ...  # offset of the behavior clock from the reference clock, from the Phase 4 sync plan
-            original_timestamps = behavior_interface.get_original_timestamps()
-            behavior_interface.set_aligned_timestamps(original_timestamps + time_shift)
-```
-
-These methods exist on `BaseTemporalAlignmentInterface`. A custom interface that must be aligned subclasses it and implements `get_original_timestamps`, `get_timestamps` and `set_aligned_timestamps`.
-
-| Method | When to use |
-|--------|-------------|
-| `interface.get_original_timestamps()` | Get timestamps before any alignment |
-| `interface.set_aligned_timestamps(timestamps)` | Replace all timestamps |
-| `interface.set_aligned_starting_time(t)` | Shift starting time for regularly sampled data |
-| `interface.align_by_interpolation(unaligned_timestamps, aligned_timestamps)` | Map this interface's clock onto the reference clock through matched sync times |
-| `SpikeGLXNIDQInterface.get_event_times_from_ttl(channel_name)` | Rising-edge times of a TTL on a NIDQ channel (`"XA2"`) |
-| `interface.set_aligned_interval_times(start_times, stop_times)` | Custom method for interval-based interfaces |
-
----
-
-## 9. README.md
+## 7. README.md
 
 ````markdown
 # <lab>-lab-to-nwb
@@ -576,7 +420,7 @@ dataset_to_nwb(
 
 ---
 
-## 10. Supporting Files
+## 8. Supporting Files
 
 ### LICENSE
 
