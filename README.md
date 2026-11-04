@@ -60,10 +60,11 @@ Convert neurophysiology data to [NWB](https://www.nwb.org/) format and publish o
 4. **Synchronization** - Analyze and plan temporal alignment across data streams
 5. **Code Generation** - Generate a complete, pip-installable conversion repo using [NeuroConv](https://neuroconv.readthedocs.io/)
 6. **Ontology Annotation** - Link species, strain, brain regions, body parts, institution, and experimenters to ontologies and registries (NCBITaxon, RRID, Allen atlases, UBERON, ROR, ORCID) inside each file. Also describe the values of categorical columns (trial outcomes, event codes) with a `MeaningsTable` and annotate them with HED.
-7. **Testing & Validation** - Run conversions, validate with NWB Inspector, fix issues iteratively
-8. **DANDI Upload** - Organize and upload validated NWB files to the DANDI Archive
-9. **DANDI Metadata** - Fill in authors, funding, publications, and subject terms with the `dandiset-metadata` skill
-10. **Example Notebook** - Write a streaming example notebook and submit it to dandi/example-notebooks
+7. **Testing & Validation** - Convert one session, then every session, validate with NWB Inspector, and fix issues iteratively
+8. **Local Notebooks** - Write a review notebook per data stream and a demo notebook that load the converted files
+9. **DANDI Upload** - Organize and upload validated NWB files to the DANDI Archive
+10. **DANDI Metadata** - Fill in authors, funding, publications, and subject terms with the `dandiset-metadata` skill
+11. **Example Notebook** - Write a streaming example notebook and submit it to dandi/example-notebooks
 
 **Supported modalities:**
 - Extracellular electrophysiology (SpikeGLX, OpenEphys, Intan, Blackrock, Neuralynx, Plexon, TDT, Axona)
@@ -84,10 +85,13 @@ Or simply describe what you want to convert:
 - *"Help me publish my electrophysiology dataset on DANDI"*
 
 **Knowledge base includes:**
-- 68 NeuroConv interface specifications
-- Canonical conversion repo structure (cookiecutter template)
-- Patterns from ~20 real CatalystNeuro conversion repos
-- NWB best practices distilled from NWB Inspector
+- Specifications of NeuroConv's interfaces, refreshed from the installed NeuroConv
+- The scaffold every conversion repo has (cookiecutter template)
+- A cookbook of converter patterns, custom interfaces, and metadata from real CatalystNeuro conversion repos
+- Temporal alignment for each synchronization pattern, and readers for MATLAB, text, and pickle files
+- NWB best practices, each tied to the NWB Inspector check that reports it
+- Guides for PyNWB types and NDX extensions (pose, fiber photometry, optogenetics, anatomical localization)
+- Ontology annotation with HERD, and value meanings with HED
 
 ### dandiset-metadata
 
@@ -156,7 +160,7 @@ Each skill directory contains:
 - `SKILL.md` - Main skill definition with frontmatter (name, description, tools) and instructions
 - Reference files - Knowledge bases, patterns, and examples that the skill consults
 
-The `nwb-convert` skill is the most complex, with 7 phase-specific instruction files and 4 knowledge base files covering interfaces, repo structure, conversion patterns, and NWB best practices.
+The `nwb-convert` skill is the most complex, with one instruction file per phase and a knowledge base that the phases consult.
 
 ## License
 
