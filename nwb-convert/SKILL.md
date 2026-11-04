@@ -132,9 +132,9 @@ See `make_env.yml` for the full specification. At minimum: `neuroconv`, `pynwb`,
 automatically checks for missing packages and installs them (CLI mode only; NWB GUIDE
 bundles everything).
 
-When data is hosted on Google Drive, `rclone mount` is used to mount the folder as a
-local virtual filesystem via FUSE. The skill guides rclone and FUSE installation and
-Google Drive authentication if needed.
+When data is hosted on Google Drive, rclone mounts the folder as a local read-only
+filesystem (`rclone nfsmount` on macOS, `rclone mount` with FUSE on Linux). See
+`knowledge/google-drive-mount.md`.
 
 ## Key References
 
@@ -149,6 +149,7 @@ details, consult the knowledge base files:
 - `knowledge/external-resources.md` — linking terms to ontologies and registries with HERD: lookup endpoints and a tested helper
 - `knowledge/notebook-recipes.md`: shared guidance for the Phase 8 and Phase 11 notebooks: pynapple loading, visualization recipes, cell style
 - `knowledge/value-meanings.md` — describing the values of categorical columns with a `MeaningsTable` and annotating them with HED: schema search, validation, and a tested helper
+- `knowledge/google-drive-mount.md`: mounting a Google Drive folder with rclone (Phase 1, Step 0c)
 
 ## Presenting Choices to the User
 
