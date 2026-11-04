@@ -4,12 +4,16 @@
 
 **Entry**: You have generated all conversion code from Phase 5.
 
-**Exit criteria**: One session converts with `stub_test=True` and in full, every stream matches its source,
-and `nwbinspector --config dandi` reports no ERROR, PYNWB_VALIDATION, CRITICAL, or BEST_PRACTICE_VIOLATION
-messages on either file.
+**Exit criteria**: Every session converts in full with no exceptions, every stream matches its source, and
+`nwbinspector --config dandi` reports no ERROR, PYNWB_VALIDATION, CRITICAL, or BEST_PRACTICE_VIOLATION
+messages on any output file.
 
 Whenever a check below fails, fix the conversion code (metadata, interface, or convert_session.py), rerun the
 conversion, and repeat the checks.
+
+Test in four rounds, each wider than the last: one session as a stub (Steps 2 to 4), that session in full
+(Step 5), every session as a stub (Step 6), and every session in full (Step 7). Problems that only affect some
+sessions show up in the last two rounds.
 
 ### Step 1: Install the Package
 
@@ -22,7 +26,7 @@ uv pip install -e ".[<conversion_name>]"
 ### Step 2: Run a Stub Test
 
 ```python
-from <package>.<conversion_name>.<conversion_name>_convert_session import session_to_nwb
+from <lab>_lab_to_nwb.<conversion_name>.convert_session import session_to_nwb
 
 session_to_nwb(
     data_dir_path="/path/to/sample/session",
@@ -100,6 +104,36 @@ the final clean output.
 
 Run one session with `stub_test=False`, then repeat Steps 3 and 4 on the full file. Some problems, such as
 timestamp gaps or wrong data orientation, only appear with all of the data.
+
+### Step 6: Run the Whole Conversion as a Stub
+
+Run `convert_all_sessions.py` on every session with `stub_test=True`, writing to its own output folder:
+
+```python
+from <lab>_lab_to_nwb.<conversion_name>.convert_all_sessions import dataset_to_nwb
+
+dataset_to_nwb(
+    data_dir_path="/path/to/data",
+    output_dir_path="/path/to/output/stub",
+    max_workers=4,
+    stub_test=True,
+)
+```
+
+Each failed session writes its traceback to `<output_dir_path>/exceptions/`. The run passes when that folder is
+empty and there is one NWB file per session. Then run NWB Inspector on the whole folder:
+
+```bash
+nwbinspector /path/to/output/stub --config dandi
+```
+
+### Step 7: Run the Whole Conversion
+
+Repeat Step 6 with `stub_test=False` and a separate output folder. A full conversion can take hours, so tell the
+user how many sessions and how much data it covers before starting, and run it in the background. Check the
+`exceptions/` folder and the file count, then run `nwbinspector <output_dir_path> --config dandi` on all of
+the output files. Fix every failure and every message at the levels in Step 4, and rerun the sessions it
+affects.
 
 ### Push Phase 7 Results
 
