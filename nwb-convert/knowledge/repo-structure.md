@@ -844,27 +844,38 @@ metadata["Subject"]["subject_id"] = "mouse001"  # Per-session value
 
 ### Extended metadata for specific modalities
 
-For optical physiology, the metadata YAML can also define imaging planes, optical channels, etc.:
+For optical physiology, the metadata YAML can also define devices, imaging planes, optical channels, etc., in the
+dict format that `get_metadata()` returns. Key `MicroscopySeries` by the imaging interface's `metadata_key`
+(`interface.get_metadata_template()` shows the full shape with the keys filled in). Entries in the old list
+format (`Ophys: Device: - name: ...`) are ignored without an error.
 
 ```yaml
+Devices:
+  microscope:
+    name: Microscope
+    description: One-photon widefield microscope.
 Ophys:
-  OnePhotonSeries:
-    - name: OnePhotonSeries
-      description: Imaging data from Miniscope.
-      imaging_plane: ImagingPlane
-      unit: n.a.
-  ImagingPlane:
-    - name: ImagingPlane
-      description: Imaging plane for Miniscope imaging data.
+  ImagingPlanes:
+    imaging_plane:
+      name: ImagingPlane
+      description: Imaging plane for one-photon imaging data.
       excitation_lambda: 496.0
       location: CA1
-      device: Microscope
+      device_metadata_key: microscope
       optical_channel:
         - name: GreenChannel
           description: Green channel of the microscope.
           emission_lambda: 513.0
       indicator: GCaMP6f
+  MicroscopySeries:
+    imaging:  # the imaging interface's metadata_key
+      name: OnePhotonSeries
+      description: One-photon imaging data.
+      imaging_plane_metadata_key: imaging_plane
+      unit: n.a.
 ```
+
+The series type comes from the imaging interface's `photon_series_type` conversion option, which defaults to `TwoPhotonSeries` in most imaging interfaces (Miniscope defaults to `OnePhotonSeries`) whatever the YAML `name` says. For one-photon data, set it in the converter's `conversion_options`, keyed by the interface name: `conversion_options.update(dict(Imaging=dict(photon_series_type="OnePhotonSeries")))`.
 
 ### Per-subject metadata
 
