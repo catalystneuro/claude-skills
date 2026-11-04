@@ -91,10 +91,10 @@ mention this to the user and skip exploratory probing for that stream.
 
    **For calcium imaging (ScanImage, Scanbox, Suite2p, etc.):**
    ```python
-   import roiextractors as re
-   imaging = re.read_scanbox(file_path)
-   print(f"FOV size: {imaging.get_image_size()}")
-   print(f"Num frames: {imaging.get_num_frames()}")
+   from roiextractors import SbxImagingExtractor  # or ScanImageImagingExtractor, Suite2pSegmentationExtractor, ...
+   imaging = SbxImagingExtractor(file_path=file_path)
+   print(f"Frame shape: {imaging.get_image_shape()}")
+   print(f"Num frames: {imaging.get_num_samples()}")
    print(f"Sampling rate: {imaging.get_sampling_frequency()}")
    ```
 

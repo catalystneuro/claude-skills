@@ -7,12 +7,12 @@ organization, with attention to what Spyglass needs to ingest.
 
 **Baseline**: Follow **nwb-convert Phase 1** for the full intake workflow. All steps apply:
 
-- **Step 0a** (uv environment) — set up the venv here; activate it throughout all phases
-- **Step 0b** (conversion repo + registry) — create the repo, consult the nwb-conversions
+- **Step 0a** (conversion repo + registry) — create the repo, consult the nwb-conversions
   registry for similar prior conversions, seed `.gitignore`
+- **Step 0b** (uv environment) — set up the venv here; activate it throughout all phases
 - **Step 0c** (Google Drive) — if data is on Drive, mount via rclone before inspection
 - **Opening questions** — ask about experiment, recordings, behavior, existing code
-- **Fetching publication details** — use `tools/fetch_paper.py` if a DOI is available
+- **Fetching publication details** — use nwb-convert's `tools/fetch_paper.py` if a DOI is available
 - **Subject metadata collection** — collect per-subject YAML early
 
 Track notes in `spyglass_notes.md` instead of `conversion_notes.md`.

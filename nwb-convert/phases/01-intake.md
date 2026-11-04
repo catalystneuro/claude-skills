@@ -12,39 +12,7 @@
 - Number of subjects and sessions
 - Any special considerations (multiple probes, multiple FOVs, etc.)
 
-### Step 0a: Check Environment
-
-**Skip this step if running inside NWB GUIDE** (all packages are pre-installed).
-
-Before anything else, set up a uv virtual environment in the conversion repo directory.
-All packages should be installed via `uv` — never use bare `pip install`.
-
-```bash
-# Ensure uv is installed
-which uv || (curl -LsSf https://astral.sh/uv/install.sh | sh)
-
-# Create venv in the conversion repo (after Step 0b creates the repo)
-cd <repo_dir>
-uv venv
-source .venv/bin/activate  # or: source <repo_dir>/.venv/bin/activate
-
-# Install base dependencies for data inspection
-uv pip install neuroconv pynwb dandi nwbinspector spikeinterface h5py remfile pandas pyyaml
-```
-
-Later in Phase 5, once `pyproject.toml` is created with conversion-specific dependencies,
-install the repo in editable mode:
-```bash
-uv pip install -e ".[<conversion_name>]"
-```
-
-**Important**: All `python3` and `pip` commands in subsequent phases should run inside
-this venv. When running Python via Bash, use the venv's Python explicitly:
-```bash
-<repo_dir>/.venv/bin/python3 -c "import neuroconv; print('OK')"
-```
-
-### Step 0b: Create Conversion Repo and Consult Registry
+### Step 0a: Create Conversion Repo and Consult Registry
 
 Before the first user-facing question, set up the conversion repo and check for prior work.
 
@@ -167,6 +135,46 @@ If you find relevant prior conversions, mention them to the user:
 > modalities. I'll use those as references as we build yours.
 
 If the registry is empty or has no matches, proceed normally — this is expected for early conversions.
+
+### Step 0b: Check Environment
+
+**Skip this step if running inside NWB GUIDE** (all packages are pre-installed).
+
+Set up a uv virtual environment in the conversion repo directory.
+All packages should be installed via `uv` — never use bare `pip install`.
+
+```bash
+# Ensure uv is installed
+which uv || (curl -LsSf https://astral.sh/uv/install.sh | sh)
+
+# Create venv in the conversion repo
+cd <repo_dir>
+uv venv
+source .venv/bin/activate  # or: source <repo_dir>/.venv/bin/activate
+
+# Install base dependencies (neuroconv brings pynwb, h5py, pandas, pyyaml)
+uv pip install neuroconv dandi nwbinspector remfile
+```
+
+Format readers (spikeinterface, roiextractors, and their backends) come from NeuroConv
+extras. Once the file formats are known, before Phase 2, install the extra for each one:
+```bash
+uv pip install "neuroconv[spikeglx,phy,suite2p]"  # one extra per format
+```
+Extra names are the lowercase format names (`openephys`, `intan`, `scanimage`, `scanbox`,
+`deeplabcut`, `sleap`, ...). `ecephys` and `ophys` install every format of that modality.
+
+Later in Phase 5, once `pyproject.toml` is created with conversion-specific dependencies,
+install the repo in editable mode:
+```bash
+uv pip install -e ".[<conversion_name>]"
+```
+
+**Important**: All `python3` and `pip` commands in subsequent phases should run inside
+this venv. When running Python via Bash, use the venv's Python explicitly:
+```bash
+<repo_dir>/.venv/bin/python3 -c "import neuroconv; print('OK')"
+```
 
 ### Step 0c: Google Drive Data Source (if applicable)
 
@@ -417,8 +425,10 @@ to retrieve the full text (or abstract). This is extremely valuable for understa
 experiment, data modalities, recording parameters, and subject details.
 
 ```bash
-python3 tools/fetch_paper.py "<identifier>" --extract methods
+python3 <skill_dir>/tools/fetch_paper.py "<identifier>" --extract methods
 ```
+
+`<skill_dir>` is this skill's base directory. The script uses only the standard library.
 
 The tool accepts DOIs (e.g., `10.1038/s41586-019-1234-5`), PMIDs (e.g., `31234567`),
 PMC IDs (e.g., `PMC6789012`), or URLs from doi.org, PubMed, or PMC.

@@ -104,7 +104,7 @@ This skill runs in two deployment modes:
 2. **NWB GUIDE (Electron app)**: The skill is bundled into the NWB GUIDE desktop application
    as the "AI Assistant" page. In this mode:
    - All Python packages are pre-installed (bundled with the app via PyInstaller)
-   - Skip the environment check in Phase 1 Step 0a
+   - Skip the environment check in Phase 1 Step 0b
    - The data directory is provided via a file picker in the UI
    - Conversation transcripts are always shared with CatalystNeuro for monitoring
    - The user interacts through a chat UI, not a terminal
