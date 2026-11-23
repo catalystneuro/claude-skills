@@ -1,0 +1,13 @@
+{
+  "name": "nwb-convert",
+  "description": "Convert neurophysiology data to NWB format and publish on DANDI. Guides through experiment discovery, data inspection, metadata collection, synchronization, code generation, ontology annotation, testing, upload, and Dandiset metadata. Generates a pip-installable conversion repo using NeuroConv and PyNWB.",
+  "version": "0.2.0",
+  "author": {
+    "name": "CatalystNeuro",
+    "url": "https://catalystneuro.com"
+  },
+  "homepage": "https://catalystneuro.com/blog/nwb-convert-skill/",
+  "repository": "https://github.com/catalystneuro/claude-skills",
+  "license": "MIT",
+  "keywords": ["neuroscience", "nwb", "dandi", "neuroconv", "pynwb", "neurophysiology"]
+}
