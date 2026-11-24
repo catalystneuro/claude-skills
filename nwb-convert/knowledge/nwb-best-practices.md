@@ -9,7 +9,7 @@ Inspector message can be looked up here by its check name.
 Two tools check converted files.
 
 - **NWB Inspector**, `nwbinspector <file or folder> --config dandi`, runs on any NWB file. Phase 7 runs it on
-  every converted file, and Phase 9 runs it on the whole output folder before upload. `--config dandi` applies the
+  every converted file, and Phase 10 runs it on the whole output folder before upload. `--config dandi` applies the
   configuration DANDI uses: it raises the subject checks (`check_subject_exists`, `check_subject_id_exists`,
   `check_subject_id_no_slashes`, `check_subject_sex`, `check_subject_species_exists`, `check_subject_species_form`,
   `check_subject_age`, `check_subject_proper_age_range`) and `check_session_id_no_slashes` to CRITICAL, and lowers
@@ -17,7 +17,7 @@ Two tools check converted files.
 - **`dandi validate`** runs PyNWB validation and NWB Inspector with the DANDI configuration, and checks the file and
   folder names that `dandi organize` produces. ERROR, PYNWB_VALIDATION, and CRITICAL messages are errors. It works
   only inside a Dandiset folder (one with `dandiset.yaml`); elsewhere it fails with `DANDI.NO_DANDISET_FOUND`.
-  Phase 9 runs it after `dandi organize`. `dandi upload` runs the same validation on each file and refuses a file
+  Phase 10 runs it after `dandi organize`. `dandi upload` runs the same validation on each file and refuses a file
   with errors.
 
 NWB Inspector reports five severity levels:

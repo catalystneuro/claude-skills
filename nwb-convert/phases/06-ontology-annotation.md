@@ -157,7 +157,7 @@ for species and brain regions where it is installed.
 
 Add a section to `conversion_notes.md` listing what was annotated, which values were left
 without a term and why, and which matches the user confirmed. Include the ORCIDs and the
-ROR ID that were found, because Phase 10 needs them again for the Dandiset contributors.
+ROR ID that were found, because Phase 11 needs them again for the Dandiset contributors.
 
 In stacked PRs mode, the helper, the hook in the converter, and the session-level terms
 (species, strain, institution, experimenters) go on the `setup` branch. The brain-region

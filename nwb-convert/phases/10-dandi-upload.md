@@ -1,4 +1,4 @@
-## Phase 9: DANDI Upload
+## Phase 10: DANDI Upload
 
 **Goal**: Upload validated NWB files to the DANDI Archive for public sharing.
 
@@ -62,7 +62,7 @@ dandiset_id = dandiset.identifier
 print(f"Created Dandiset: {dandiset_id}")
 ```
 
-Contributors, license, and the rest of the Dandiset metadata are filled in Phase 10.
+Contributors, license, and the rest of the Dandiset metadata are filled in Phase 11.
 
 Alternatively, guide the user through creating one manually on the web:
 > 1. Go to https://dandiarchive.org (or https://sandbox.dandiarchive.org for sandbox)

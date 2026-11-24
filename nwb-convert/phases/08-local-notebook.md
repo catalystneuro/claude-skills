@@ -224,4 +224,5 @@ git push
 > The notebooks are saved in `notebooks/`, one per data stream plus `<lab_name>_demo.ipynb`.
 > You can open them anytime to explore the converted data before uploading to DANDI.
 >
-> Next we'll upload the data to DANDI.
+> Next, if there is a paper, we'll check the converted files against it with Encore (Phase 9).
+> Otherwise we'll upload the data to DANDI.

@@ -62,9 +62,10 @@ Convert neurophysiology data to [NWB](https://www.nwb.org/) format and publish o
 6. **Ontology Annotation** - Link species, strain, brain regions, body parts, institution, and experimenters to ontologies and registries (NCBITaxon, RRID, Allen atlases, UBERON, ROR, ORCID) inside each file. Also describe the values of categorical columns (trial outcomes, event codes) with a `MeaningsTable` and annotate them with HED.
 7. **Testing & Validation** - Convert one session, then every session, validate with NWB Inspector, and fix issues iteratively
 8. **Local Notebooks** - Write a review notebook per data stream and a demo notebook that load the converted files
-9. **DANDI Upload** - Organize and upload validated NWB files to the DANDI Archive
-10. **DANDI Metadata** - Fill in authors, funding, publications, and subject terms with the `dandiset-metadata` skill
-11. **Example Notebook** - Write a streaming example notebook and submit it to dandi/example-notebooks
+9. **Encore Check** - When there is a paper, run an [Encore](https://encorescience.org) check: AI agents try to reproduce the paper's findings from the converted files and report problems with the data, which are fixed before upload
+10. **DANDI Upload** - Organize and upload validated NWB files to the DANDI Archive
+11. **DANDI Metadata** - Fill in authors, funding, publications, and subject terms with the `dandiset-metadata` skill
+12. **Example Notebook** - Write a streaming example notebook and submit it to dandi/example-notebooks
 
 **Supported modalities:**
 - Extracellular electrophysiology (SpikeGLX, OpenEphys, Intan, Blackrock, Neuralynx, Plexon, TDT, Axona)

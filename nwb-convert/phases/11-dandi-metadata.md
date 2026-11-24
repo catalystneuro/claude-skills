@@ -1,11 +1,11 @@
-## Phase 10: DANDI Metadata
+## Phase 11: DANDI Metadata
 
 **Goal**: Fill in the Dandiset-level metadata so the Dandiset is citable, findable, and
 ready to publish: contributors with ORCIDs and ROR affiliations, a contact person, funders
 with award numbers, the associated publication and conversion code, subject terms, keywords,
 license, and ethics approval.
 
-**Entry**: The NWB files are uploaded to DANDI (Phase 9). The Dandiset ID and the DANDI
+**Entry**: The NWB files are uploaded to DANDI (Phase 10). The Dandiset ID and the DANDI
 instance (sandbox or archive) are known.
 
 **Exit criteria**: The draft metadata passes validation, or the only remaining errors are
