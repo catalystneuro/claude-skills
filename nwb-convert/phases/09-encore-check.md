@@ -21,7 +21,6 @@ Skip this phase, and say so in one line, when any of these holds:
 - The user cannot provide the paper as a PDF or a text file. `encore check` needs the paper itself, not only its DOI,
   and `tools/fetch_paper.py` truncates long sections, so its output is not a substitute.
 - The `claude` command (Claude Code) is not installed and signed in on this machine. Encore runs its agents through it.
-  This is the usual case inside NWB GUIDE.
 
 Otherwise, tell the user what the check costs before starting, since it runs for hours and uses their own Claude
 account:
