@@ -28,7 +28,7 @@ account:
 > Your data comes with a paper, so before we upload I'd like to run an Encore check. Encore's agents read the paper,
 > write down its main findings, and try to reproduce them from the converted NWB files. What usually matters most is
 > what they find wrong with the data on the way: wrong units, missing metadata, data the paper relies on that is not
-> in the files. A quick check takes one to three hours and counts against the usage of the Claude account that Claude
+> in the files. See encorescience.org for details. A quick check takes one to three hours and counts against the usage of the Claude account that Claude
 > Code is signed in to.
 >
 > <choices>
