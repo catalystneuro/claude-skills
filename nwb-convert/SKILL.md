@@ -3,9 +3,9 @@ name: nwb-convert
 description: >
   Lead a conversation to convert neurophysiology data to NWB format and publish on DANDI.
   Guides the user (typically a lab experimentalist) through experiment discovery, data inspection,
-  metadata collection, synchronization analysis, code generation, ontology annotation, testing, DANDI upload,
-  Dandiset metadata, and example notebook generation. Generates a documented, pip-installable git repo using
-  NeuroConv and PyNWB.
+  metadata collection, synchronization analysis, code generation, ontology annotation, testing, an Encore
+  check of the converted files against the paper, DANDI upload, Dandiset metadata, and example notebook
+  generation. Generates a documented, pip-installable git repo using NeuroConv and PyNWB.
 argument-hint: "[data path | Google Drive URL | conversion repo] [--stacked]"
 ---
 
@@ -85,14 +85,17 @@ $file: ./phases/07-testing.md
 ### Phase 8: Local Example Notebook
 $file: ./phases/08-local-notebook.md
 
-### Phase 9: DANDI Upload
-$file: ./phases/09-dandi-upload.md
+### Phase 9: Encore Check
+$file: ./phases/09-encore-check.md
 
-### Phase 10: DANDI Metadata
-$file: ./phases/10-dandi-metadata.md
+### Phase 10: DANDI Upload
+$file: ./phases/10-dandi-upload.md
 
-### Phase 11: Example Notebook Generation
-$file: ./phases/11-notebook-generation.md
+### Phase 11: DANDI Metadata
+$file: ./phases/11-dandi-metadata.md
+
+### Phase 12: Example Notebook Generation
+$file: ./phases/12-notebook-generation.md
 
 ## Deployment Modes
 
@@ -148,7 +151,7 @@ details, consult the knowledge base files:
 - `knowledge/reading-source-files.md` — readers for MATLAB, text, and pickle files
 - `knowledge/nwb-best-practices.md` — NWB conventions with the NWB Inspector check for each, and what `nwbinspector --config dandi` and `dandi validate` check
 - `knowledge/external-resources.md` — linking terms to ontologies and registries with HERD: lookup endpoints and a tested helper
-- `knowledge/notebook-recipes.md`: shared guidance for the Phase 8 and Phase 11 notebooks: pynapple loading, visualization recipes, cell style
+- `knowledge/notebook-recipes.md`: shared guidance for the Phase 8 and Phase 12 notebooks: pynapple loading, visualization recipes, cell style
 - `knowledge/value-meanings.md` — describing the values of categorical columns with a `MeaningsTable` and annotating them with HED: schema search, validation, and a tested helper
 - `knowledge/google-drive-mount.md`: mounting a Google Drive folder with rclone (Phase 1, Step 0c)
 

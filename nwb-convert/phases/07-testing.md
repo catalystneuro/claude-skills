@@ -98,7 +98,7 @@ nwbinspector /path/to/output/session.nwb --config dandi
 Fix every ERROR, PYNWB_VALIDATION, CRITICAL, and BEST_PRACTICE_VIOLATION message. Fix BEST_PRACTICE_SUGGESTION
 messages where straightforward and note the rest for the user. `knowledge/nwb-best-practices.md` ("Validation")
 explains what `--config dandi` changes, and each of its rules names the check that reports it. `dandi validate`
-needs a Dandiset folder, so it runs in Phase 9. Show the user the final clean output.
+needs a Dandiset folder, so it runs in Phase 10. Show the user the final clean output.
 
 ### Step 5: Run Full Conversion (one session)
 

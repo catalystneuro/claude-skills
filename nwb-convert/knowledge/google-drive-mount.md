@@ -121,7 +121,7 @@ Record it in `conversion_notes.md`:
 
 ## Unmounting
 
-Keep the mount until every session is converted and uploaded (end of Phase 9; the batch conversion
+Keep the mount until every session is converted and uploaded (end of Phase 10; the batch conversion
 can run there together with the upload). Then unmount:
 ```bash
 # macOS (nfsmount)

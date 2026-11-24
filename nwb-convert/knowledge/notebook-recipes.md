@@ -1,6 +1,6 @@
 # Notebook Recipes
 
-Shared guidance for the notebooks written in Phase 8 (local NWB files) and Phase 11 (streamed
+Shared guidance for the notebooks written in Phase 8 (local NWB files) and Phase 12 (streamed
 from DANDI). Each phase gives its own way to open the file; everything here starts from an
 open `nwbfile`.
 

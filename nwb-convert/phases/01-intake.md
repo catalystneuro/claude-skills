@@ -199,7 +199,8 @@ conversion repo, and follow `knowledge/stacked-prs.md` from here on.
 
 **About existing resources (always ask these):**
 - Is there a manuscript, preprint, or published paper describing this data?
-  (If yes, get the DOI or URL — this helps with experiment_description and related_publications)
+  (If yes, get the DOI or URL — this helps with experiment_description and related_publications.
+  Ask for the PDF too, or where to find it: Phase 9 checks the converted files against it.)
 - Is this data already publicly available in any non-NWB format? (e.g., on Figshare, Zenodo,
   institutional repository, or another archive)
 - Do you have existing analysis code for this data? (e.g., MATLAB scripts, Python notebooks)
@@ -274,6 +275,7 @@ After this phase, update `conversion_notes.md` with:
 
 ## Existing Resources
 - Publication: [DOI or "not yet published"]
+- Paper PDF: [path, or "not provided"]
 - Existing public data: [URL or "none"]
 - Analysis code: [URL or path or "none"]
 - Existing data readers: [description or "none"]
